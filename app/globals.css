@@ -61,3 +61,70 @@ body {
 }
 .btn-primary:hover { opacity: 0.88; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Aurora background animations ───────────────────────────────────────── */
+/* Matches AuroraBackground.swift: sin/cos orbital drift per orb */
+@keyframes aurora-drift-0 {
+  0%   { transform: translate(-50%, -50%) translate(0px, 0px) scale(1); }
+  100% { transform: translate(-50%, -50%) translate(40px, -30px) scale(1.08); }
+}
+@keyframes aurora-drift-1 {
+  0%   { transform: translate(-50%, -50%) translate(0px, 0px) scale(1); }
+  100% { transform: translate(-50%, -50%) translate(-35px, 45px) scale(1.12); }
+}
+@keyframes aurora-drift-2 {
+  0%   { transform: translate(-50%, -50%) translate(0px, 0px) scale(1); }
+  100% { transform: translate(-50%, -50%) translate(50px, 30px) scale(0.92); }
+}
+@keyframes aurora-drift-3 {
+  0%   { transform: translate(-50%, -50%) translate(0px, 0px) scale(1); }
+  100% { transform: translate(-50%, -50%) translate(-25px, -40px) scale(1.06); }
+}
+
+/* Particle twinkle — opacity pulse + gentle float */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.08; transform: scale(0.8) translateY(0px); }
+  50%       { opacity: 0.4;  transform: scale(1.4) translateY(-4px); }
+}
+
+/* Aurora pulse for modal interior orbs */
+@keyframes aurora-pulse {
+  0%   { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 1;   transform: scale(1.15); }
+}
+
+/* Liquid wave keyframe (used by gauge) */
+@keyframes wave-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* Sparkle orbit (gauge dots) */
+@keyframes sparkle-orbit {
+  0%   { transform: rotate(0deg) translateX(var(--r)) rotate(0deg); opacity: 0.2; }
+  50%  { opacity: 0.8; }
+  100% { transform: rotate(360deg) translateX(var(--r)) rotate(-360deg); opacity: 0.2; }
+}
+
+/* Metric card clickable glow hint */
+.metric-tile {
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+.metric-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(96,165,250,0.04), rgba(167,139,250,0.04));
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  border-radius: inherit;
+}
+.metric-tile:hover::after { opacity: 1; }
+.metric-tile:hover {
+  box-shadow: 0 0 0 1px rgba(96,165,250,0.25), 0 8px 24px rgba(96,165,250,0.08);
+  transform: translateY(-1px);
+}
+.metric-tile:active { transform: scale(0.98); }

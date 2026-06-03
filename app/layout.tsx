@@ -16,13 +16,15 @@ export const metadata: Metadata = {
 };
 
 import { Sidebar } from "./components/Sidebar";
+import { AuroraBackground } from "./components/AuroraBackground";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="flex h-screen bg-[var(--surface)] overflow-hidden">
+        <AuroraBackground />
         <Sidebar />
-        <div className="flex-1 overflow-y-auto">{children}</div>
+        <div className="relative flex-1 overflow-y-auto" style={{ zIndex: 1 }}>{children}</div>
       </body>
     </html>
   );

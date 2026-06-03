@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { Zap, Download, Upload, Activity, Timer, Wifi } from "lucide-react";
 import { calculateScore, scoreLabel } from "@/lib/score";
+import { MetricExplainer } from "@/app/components/MetricExplainer";
 
 type Phase = "idle" | "latency" | "download" | "upload" | "done";
 
@@ -60,20 +61,33 @@ function MetricCard({
   value,
   unit,
   color = "var(--text-primary)",
+  onClick,
 }: {
   icon: React.ElementType;
   label: string;
   value: string | number;
   unit: string;
   color?: string;
+  onClick?: () => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-5 border border-[var(--border)]" style={{ boxShadow: "var(--shadow-card)" }}>
+    <div
+      className="metric-tile bg-white rounded-2xl p-5 border border-[var(--border)]"
+      style={{ boxShadow: "var(--shadow-card)" }}
+      onClick={onClick}
+      title="Click for AI explanation"
+    >
       <div className="flex items-center gap-2 mb-3">
         <div className="w-8 h-8 rounded-xl bg-[var(--surface)] flex items-center justify-center">
           <Icon size={15} style={{ color }} />
         </div>
         <span className="text-[12px] font-medium text-[var(--text-secondary)]">{label}</span>
+        {onClick && (
+          <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full"
+            style={{ background: "rgba(96,165,250,0.1)", color: "rgba(96,165,250,0.8)" }}>
+            AI
+          </span>
+        )}
       </div>
       <div className="flex items-baseline gap-1">
         <span className="text-[28px] font-bold text-[var(--text-primary)] leading-none">{value}</span>
@@ -83,12 +97,17 @@ function MetricCard({
   );
 }
 
+type MetricInfo = { name: string; value: string | number; unit: string; color: string; context?: string };
+
 export default function SpeedTestPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [result, setResult] = useState<Result | null>(null);
   const [livePoints, setLivePoints] = useState<{ t: number; mbps: number }[]>([]);
   const [progress, setProgress] = useState(0);
+  const [activeMetric, setActiveMetric] = useState<MetricInfo | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  function openExplainer(info: MetricInfo) { setActiveMetric(info); }
 
   const runTest = useCallback(async () => {
     setPhase("latency");
@@ -268,14 +287,35 @@ export default function SpeedTestPage() {
 
       {/* Results grid */}
       {result && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <MetricCard icon={Download} label="Download" value={result.download} unit="Mbps" color="#3b82f6" />
-          <MetricCard icon={Upload} label="Upload" value={result.upload} unit="Mbps" color="#8b5cf6" />
-          <MetricCard icon={Timer} label="Latency" value={result.latency} unit="ms" color="#16a34a" />
-          <MetricCard icon={Activity} label="Jitter" value={result.jitter} unit="ms" color="#d97706" />
-          <MetricCard icon={Wifi} label="Packet Loss" value={result.packetLoss} unit="%" color={result.packetLoss > 0 ? "#dc2626" : "#16a34a"} />
-          <MetricCard icon={Zap} label="Health Score" value={result.score} unit="/ 100" color={scoreLabel(result.score).color} />
-        </div>
+        <>
+          <p className="text-[11px] text-[var(--text-tertiary)] mb-3 tracking-wide">
+            💡 Tap any card for AI explanation
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <MetricCard icon={Download} label="Download" value={result.download} unit="Mbps" color="#3b82f6"
+              onClick={() => openExplainer({ name: "Download Speed", value: result!.download, unit: "Mbps", color: "96,165,250",
+                context: `Upload: ${result!.upload}Mbps, Latency: ${result!.latency}ms` })} />
+            <MetricCard icon={Upload} label="Upload" value={result.upload} unit="Mbps" color="#8b5cf6"
+              onClick={() => openExplainer({ name: "Upload Speed", value: result!.upload, unit: "Mbps", color: "167,139,250",
+                context: `Download: ${result!.download}Mbps, Latency: ${result!.latency}ms` })} />
+            <MetricCard icon={Timer} label="Latency" value={result.latency} unit="ms" color="#16a34a"
+              onClick={() => openExplainer({ name: "Network Latency", value: result!.latency, unit: "ms", color: "34,197,94",
+                context: `Jitter: ${result!.jitter}ms, Packet Loss: ${result!.packetLoss}%` })} />
+            <MetricCard icon={Activity} label="Jitter" value={result.jitter} unit="ms" color="#d97706"
+              onClick={() => openExplainer({ name: "Network Jitter", value: result!.jitter, unit: "ms", color: "251,191,36",
+                context: `Latency: ${result!.latency}ms, Download: ${result!.download}Mbps` })} />
+            <MetricCard icon={Wifi} label="Packet Loss" value={result.packetLoss} unit="%" color={result.packetLoss > 0 ? "#dc2626" : "#16a34a"}
+              onClick={() => openExplainer({ name: "Packet Loss", value: result!.packetLoss, unit: "%", color: result!.packetLoss > 0 ? "239,68,68" : "34,197,94",
+                context: `Latency: ${result!.latency}ms, Jitter: ${result!.jitter}ms` })} />
+            <MetricCard icon={Zap} label="Health Score" value={result.score} unit="/ 100" color={scoreLabel(result.score).color}
+              onClick={() => openExplainer({ name: "Network Health Score", value: result!.score, unit: "/ 100", color: "96,165,250",
+                context: `Download: ${result!.download}Mbps, Upload: ${result!.upload}Mbps, Latency: ${result!.latency}ms, Jitter: ${result!.jitter}ms` })} />
+          </div>
+        </>
+      )}
+
+      {activeMetric && (
+        <MetricExplainer metric={activeMetric} onClose={() => setActiveMetric(null)} />
       )}
     </div>
   );
