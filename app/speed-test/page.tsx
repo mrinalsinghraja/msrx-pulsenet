@@ -118,10 +118,11 @@ export default function SpeedTestPage() {
     // ── 1. Latency + jitter ──────────────────────────────────────────────────
     const latSamples: number[] = [];
     let failed = 0;
+    // Ping Cloudflare CDN — measures real internet RTT, not localhost loopback
     for (let i = 0; i < 10; i++) {
       try {
         const t0 = performance.now();
-        await fetch("/api/speed-test/ping", { cache: "no-store" });
+        await fetch("https://speed.cloudflare.com/__down?bytes=1", { cache: "no-store", mode: "no-cors" });
         latSamples.push(performance.now() - t0);
       } catch { failed++; }
     }
@@ -141,7 +142,9 @@ export default function SpeedTestPage() {
       const dlPoints: { t: number; mbps: number }[] = [];
       const dlCtrl = new AbortController();
       abortRef.current = dlCtrl;
-      const res = await fetch("/api/speed-test/download?size=15000000", {
+      // Use Cloudflare speed CDN — tests real internet, works from localhost too
+      const dlUrl = "https://speed.cloudflare.com/__down?bytes=15000000";
+      const res = await fetch(dlUrl, {
         signal: dlCtrl.signal,
         cache: "no-store",
       });
@@ -171,6 +174,8 @@ export default function SpeedTestPage() {
     const upPoints: { t: number; mbps: number }[] = [];
     let ulMbps = 0;
     try {
+      // Upload to own server — measures real upload in production (Vercel → user)
+      // Note: inflated on localhost (loopback), correct on pulsenet.msrx.co.in
       const ulSize = 3_000_000;
       const data = new Uint8Array(ulSize).fill(65);
       const t0 = performance.now();
