@@ -1,332 +1,388 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts";
-import { Zap, Download, Upload, Activity, Timer, Wifi } from "lucide-react";
+import { useState, useCallback, useEffect } from "react";
+import { Zap, MapPin, Globe, Wifi, Server, RefreshCw } from "lucide-react";
 import { calculateScore, scoreLabel } from "@/lib/score";
 import { MetricExplainer } from "@/app/components/MetricExplainer";
 
 type Phase = "idle" | "latency" | "download" | "upload" | "done";
-
-type Result = {
-  download: number;
-  upload: number;
-  latency: number;
-  jitter: number;
-  packetLoss: number;
-  score: number;
-};
-
-function GaugeRing({ score, size = 160 }: { score: number; size?: number }) {
-  const r = 58;
-  const circ = 2 * Math.PI * r;
-  const { label, color } = scoreLabel(score);
-  const progress = (score / 100) * circ;
-
-  return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox="0 0 140 140">
-        <circle cx="70" cy="70" r={r} fill="none" stroke="#f0f0f3" strokeWidth="12" />
-        <circle
-          cx="70"
-          cy="70"
-          r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth="12"
-          strokeLinecap="round"
-          strokeDasharray={`${progress} ${circ}`}
-          strokeDashoffset={circ * 0.25}
-          style={{ transition: "stroke-dasharray 0.8s ease" }}
-        />
-      </svg>
-      <div className="absolute text-center">
-        <p className="text-[32px] font-bold text-[var(--text-primary)] leading-none">{score}</p>
-        <p className="text-[12px] font-semibold mt-0.5" style={{ color }}>{label}</p>
-      </div>
-    </div>
-  );
-}
-
-function MetricCard({
-  icon: Icon,
-  label,
-  value,
-  unit,
-  color = "var(--text-primary)",
-  onClick,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  unit: string;
-  color?: string;
-  onClick?: () => void;
-}) {
-  return (
-    <div
-      className="metric-tile bg-white rounded-2xl p-5 border border-[var(--border)]"
-      style={{ boxShadow: "var(--shadow-card)" }}
-      onClick={onClick}
-      title="Click for AI explanation"
-    >
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-8 h-8 rounded-xl bg-[var(--surface)] flex items-center justify-center">
-          <Icon size={15} style={{ color }} />
-        </div>
-        <span className="text-[12px] font-medium text-[var(--text-secondary)]">{label}</span>
-        {onClick && (
-          <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full"
-            style={{ background: "rgba(96,165,250,0.1)", color: "rgba(96,165,250,0.8)" }}>
-            AI
-          </span>
-        )}
-      </div>
-      <div className="flex items-baseline gap-1">
-        <span className="text-[28px] font-bold text-[var(--text-primary)] leading-none">{value}</span>
-        <span className="text-[13px] text-[var(--text-secondary)]">{unit}</span>
-      </div>
-    </div>
-  );
-}
-
 type MetricInfo = { name: string; value: string | number; unit: string; color: string; context?: string };
+type ConnInfo = { ip: string; isp: string; city: string; country: string };
+type Result = { download: number; upload: number; latency: number; jitter: number; packetLoss: number; score: number };
 
+// ── Log-scale helpers ────────────────────────────────────────────────────────
+const MAX_MBPS = 1000;
+function mbpsToFraction(mbps: number) {
+  if (mbps <= 0) return 0;
+  return Math.min(Math.log(1 + mbps) / Math.log(1 + MAX_MBPS), 1);
+}
+function fractionToAngle(f: number) { return 135 + f * 270; } // 135→405°
+
+function polarXY(cx: number, cy: number, r: number, deg: number) {
+  const rad = (deg * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+function arcPath(cx: number, cy: number, r: number, a1: number, a2: number) {
+  const s = polarXY(cx, cy, r, a1);
+  const e = polarXY(cx, cy, r, a2);
+  const sweep = ((a2 - a1) + 360) % 360;
+  return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 ${sweep > 180 ? 1 : 0} 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`;
+}
+
+// ── Scale ticks ──────────────────────────────────────────────────────────────
+const TICKS = [0, 5, 10, 25, 50, 100, 250, 500, 750, 1000];
+const MAJOR = [0, 50, 100, 500, 1000];
+const CX = 150, CY = 148;
+
+// ── Speedometer ──────────────────────────────────────────────────────────────
+function Speedometer({ speed, phase }: { speed: number; phase: Phase }) {
+  const upload = phase === "upload";
+  const gid = upload ? "gu" : "gd";
+  const c1 = upload ? "#a855f7" : "#22d3ee";
+  const c2 = upload ? "#ec4899" : "#3b82f6";
+  const active = phase !== "idle";
+  const f = mbpsToFraction(speed);
+  const fillEnd = fractionToAngle(f);
+
+  const trackPath = arcPath(CX, CY, 110, 135, 405);
+  const fillPath = f > 0.003 ? arcPath(CX, CY, 110, 135, fillEnd) : null;
+
+  const displayNum = speed >= 100
+    ? Math.round(speed).toString()
+    : speed > 0 ? speed.toFixed(1) : "—";
+
+  return (
+    <svg viewBox="0 0 300 230" className="w-full max-w-xs mx-auto select-none">
+      <defs>
+        <linearGradient id={gid} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor={c1} />
+          <stop offset="100%" stopColor={c2} />
+        </linearGradient>
+        <filter id="gaugeGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+
+      {/* Track */}
+      <path d={trackPath} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth="12" strokeLinecap="round" />
+
+      {/* Fill */}
+      {active && fillPath && (
+        <path d={fillPath} fill="none" stroke={`url(#${gid})`}
+          strokeWidth="12" strokeLinecap="round"
+          filter="url(#gaugeGlow)"
+          style={{ transition: "d 0.12s linear" }} />
+      )}
+
+      {/* Scale ticks */}
+      {TICKS.map((v) => {
+        const a = fractionToAngle(mbpsToFraction(v));
+        const o = polarXY(CX, CY, 99, a);
+        const i = polarXY(CX, CY, 92, a);
+        const lp = polarXY(CX, CY, 82, a);
+        const major = MAJOR.includes(v);
+        return (
+          <g key={v}>
+            <line x1={i.x} y1={i.y} x2={o.x} y2={o.y}
+              stroke="rgba(0,0,0,0.12)" strokeWidth={major ? 1.5 : 0.8} />
+            {major && v > 0 && (
+              <text x={lp.x} y={lp.y} textAnchor="middle" dominantBaseline="middle"
+                fontSize="8.5" fill="rgba(0,0,0,0.3)" fontFamily="inherit">
+                {v >= 1000 ? "1k" : v}
+              </text>
+            )}
+          </g>
+        );
+      })}
+
+      {/* Center text */}
+      <text x={CX} y={CY - 10} textAnchor="middle"
+        fontSize={speed >= 1000 ? "34" : "42"} fontWeight="700"
+        fill={active ? `url(#${gid})` : "rgba(0,0,0,0.12)"}
+        fontFamily="inherit">
+        {displayNum}
+      </text>
+      <text x={CX} y={CY + 18} textAnchor="middle" fontSize="11"
+        fill="rgba(0,0,0,0.35)" fontFamily="inherit">
+        Mbps
+      </text>
+    </svg>
+  );
+}
+
+// ── Connection info ────────────────────────────────────────────────────────────
+function ConnBar({ conn }: { conn: ConnInfo | null }) {
+  if (!conn) return (
+    <div className="flex justify-center">
+      <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-tertiary)] animate-pulse">
+        <RefreshCw size={10} className="animate-spin" />Detecting connection…
+      </div>
+    </div>
+  );
+  const isp = conn.isp?.replace(/^AS\d+\s+/, "").split(" ").slice(0, 3).join(" ") || "—";
+  const info = [
+    { icon: Wifi, label: "Network", val: isp },
+    { icon: Globe, label: "IP", val: conn.ip, mono: true },
+    { icon: MapPin, label: "Location", val: [conn.city, conn.country].filter(v => v && v !== "undefined").join(", ") || "—" },
+    { icon: Server, label: "Server", val: "Cloudflare Edge" },
+  ];
+  return (
+    <div className="flex flex-wrap justify-center gap-4">
+      {info.map(({ icon: Icon, label, val, mono }) => (
+        <div key={label} className="flex items-center gap-1.5">
+          <Icon size={12} className="text-[var(--text-tertiary)] shrink-0" />
+          <div>
+            <p className="text-[9px] text-[var(--text-tertiary)] leading-tight">{label}</p>
+            <p className={`text-[12px] font-semibold text-[var(--text-primary)] leading-tight ${mono ? "font-mono" : ""}`}>{val}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Main ────────────────────────────────────────────────────────────────────────
 export default function SpeedTestPage() {
   const [phase, setPhase] = useState<Phase>("idle");
+  const [lastActivePhase, setLastActivePhase] = useState<"download" | "upload">("download");
+  const [liveSpeed, setLiveSpeed] = useState(0);
+  const [ping, setPing] = useState<number | null>(null);
   const [result, setResult] = useState<Result | null>(null);
-  const [livePoints, setLivePoints] = useState<{ t: number; mbps: number }[]>([]);
-  const [progress, setProgress] = useState(0);
+  const [conn, setConn] = useState<ConnInfo | null>(null);
   const [activeMetric, setActiveMetric] = useState<MetricInfo | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
-  function openExplainer(info: MetricInfo) { setActiveMetric(info); }
+  useEffect(() => {
+    fetch("/api/ip-info").then(r => r.json()).then(setConn).catch(() => {});
+  }, []);
 
   const runTest = useCallback(async () => {
     setPhase("latency");
     setResult(null);
-    setLivePoints([]);
-    setProgress(5);
+    setLiveSpeed(0);
+    setPing(null);
 
-    // ── 1. Latency + jitter ──────────────────────────────────────────────────
-    const latSamples: number[] = [];
+    // 1 — Latency
+    const samp: number[] = [];
     let failed = 0;
-    // Ping Cloudflare CDN nearest PoP — __down?bytes=0 = pure RTT, no data transfer
     for (let i = 0; i < 10; i++) {
       try {
-        const t0 = performance.now();
+        const t = performance.now();
         await fetch("https://speed.cloudflare.com/__down?bytes=0", { cache: "no-store" });
-        latSamples.push(performance.now() - t0);
+        samp.push(performance.now() - t);
       } catch { failed++; }
     }
-    const latency = Math.round(Math.min(...latSamples) * 10) / 10;
-    const avgLat = latSamples.reduce((a, b) => a + b, 0) / latSamples.length;
+    const latency = samp.length ? Math.round(Math.min(...samp) * 10) / 10 : 0;
+    const avgL = samp.reduce((a, b) => a + b, 0) / (samp.length || 1);
     const jitter = Math.round(
-      Math.sqrt(latSamples.reduce((a, b) => a + Math.pow(b - avgLat, 2), 0) / latSamples.length) * 10
+      Math.sqrt(samp.reduce((a, b) => a + Math.pow(b - avgL, 2), 0) / (samp.length || 1)) * 10
     ) / 10;
     const packetLoss = Math.round((failed / 10) * 1000) / 10;
+    setPing(latency);
 
-    setProgress(20);
-
-    // ── 2. Download speed ─────────────────────────────────────────────────────
+    // 2 — Download
     setPhase("download");
+    setLastActivePhase("download");
+    setLiveSpeed(0);
     let dlMbps = 0;
     try {
-      const dlPoints: { t: number; mbps: number }[] = [];
-      const dlCtrl = new AbortController();
-      abortRef.current = dlCtrl;
-      // Use Cloudflare speed CDN — tests real internet, works from localhost too
-      const dlUrl = "https://speed.cloudflare.com/__down?bytes=15000000";
-      const res = await fetch(dlUrl, {
-        signal: dlCtrl.signal,
-        cache: "no-store",
-      });
+      const res = await fetch("https://speed.cloudflare.com/__down?bytes=25000000", { cache: "no-store" });
       const reader = res.body!.getReader();
-      let bytes = 0, tStart = performance.now(), tLast = tStart, bLast = 0;
-
+      let bytes = 0, t0 = performance.now(), tL = t0, bL = 0;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         bytes += value.length;
         const now = performance.now();
-        if (now - tLast >= 250) {
-          const instantMbps = ((bytes - bLast) * 8) / ((now - tLast) / 1000) / 1_000_000;
-          dlPoints.push({ t: dlPoints.length, mbps: Math.round(instantMbps * 10) / 10 });
-          setLivePoints([...dlPoints]);
-          bLast = bytes; tLast = now;
+        if (now - tL >= 150) {
+          setLiveSpeed(Math.round(((bytes - bL) * 8) / ((now - tL) / 1000) / 1_000_000 * 10) / 10);
+          bL = bytes; tL = now;
         }
-        setProgress(20 + Math.round((bytes / 15_000_000) * 40));
       }
-      dlMbps = Math.round((bytes * 8) / ((performance.now() - tStart) / 1000) / 1_000_000 * 10) / 10;
-    } catch { /* aborted */ }
+      dlMbps = Math.round((bytes * 8) / ((performance.now() - t0) / 1000) / 1_000_000 * 10) / 10;
+    } catch { /* */ }
+    setLiveSpeed(dlMbps);
 
-    setProgress(60);
-
-    // ── 3. Upload speed — XHR to own Vercel Edge endpoint (global, nearest region)
-    // Edge runtime deploys to Mumbai/Singapore/etc — accurate for India/Asia users
-    // Time from send() to onloadend = full round-trip (upload + tiny server ack)
+    // 3 — Upload (6 parallel streams × 8MB = 48MB total)
     setPhase("upload");
-    const upPoints: { t: number; mbps: number }[] = [];
+    setLastActivePhase("upload");
+    setLiveSpeed(0);
     let ulMbps = 0;
-    await new Promise<void>((resolve) => {
-      const ulSize = 10_000_000; // 10MB for accuracy on fast connections
-      const data = new Uint8Array(ulSize).fill(65);
-      const xhr = new XMLHttpRequest();
+    const STREAMS = 6, CHUNK = 8_000_000;
+    try {
+      const buf = new Uint8Array(CHUNK).fill(65);
       const t0 = performance.now();
-      xhr.onloadend = () => {
-        const elapsed = (performance.now() - t0) / 1000;
-        if (elapsed > 0.05) {
-          ulMbps = Math.round((ulSize * 8) / elapsed / 1_000_000 * 10) / 10;
-        }
-        upPoints.push({ t: 0, mbps: ulMbps });
-        setLivePoints(upPoints);
-        resolve();
-      };
-      xhr.timeout = 30000;
-      xhr.ontimeout = () => resolve();
-      xhr.open("POST", "https://pulsenet.msrx.co.in/api/speed-test/upload");
-      // No Content-Type = text/plain = simple CORS (no preflight)
-      xhr.send(data.buffer);
-    });
+      let done_ = 0;
 
-    setProgress(90);
+      await Promise.all(Array.from({ length: STREAMS }, () =>
+        new Promise<void>(res => {
+          const xhr = new XMLHttpRequest();
+          xhr.onloadend = () => {
+            done_++;
+            const el = (performance.now() - t0) / 1000;
+            if (el > 0.1) setLiveSpeed(Math.round((done_ * CHUNK * 8) / el / 1_000_000 * 10) / 10);
+            res();
+          };
+          xhr.timeout = 30000;
+          xhr.ontimeout = () => res();
+          xhr.open("POST", "https://pulsenet.msrx.co.in/api/speed-test/upload");
+          xhr.send(buf.buffer.slice(0));
+        })
+      ));
 
-    // ── 4. Score + save ───────────────────────────────────────────────────────
+      const elapsed = (performance.now() - t0) / 1000;
+      ulMbps = elapsed > 0.1 ? Math.round((CHUNK * STREAMS * 8) / elapsed / 1_000_000 * 10) / 10 : 0;
+    } catch { /* */ }
+    setLiveSpeed(ulMbps);
+
+    // 4 — Score + save
     const score = calculateScore({ download: dlMbps, upload: ulMbps, latency, jitter, packetLoss });
     const res: Result = { download: dlMbps, upload: ulMbps, latency, jitter, packetLoss, score };
     setResult(res);
     setPhase("done");
-    setProgress(100);
 
-    // Save to DB
     try {
       await fetch("/api/tests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(res),
+        body: JSON.stringify({ ...res, ip: conn?.ip, isp: conn?.isp, location: conn?.city }),
       });
-    } catch { /* non-critical */ }
-  }, []);
+    } catch { /* */ }
+  }, [conn]);
 
-  const phaseLabel: Record<Phase, string> = {
-    idle: "",
-    latency: "Measuring latency & jitter…",
-    download: "Testing download speed…",
-    upload: "Testing upload speed…",
-    done: "Test complete",
-  };
+  const upload = phase === "upload" || (phase === "done" && lastActivePhase === "upload");
+  const isActive = phase !== "idle" && phase !== "done";
+  const { color: scoreColor, label: scoreLbl } = result ? scoreLabel(result.score) : { color: "#a1a1a6", label: "" };
 
   return (
-    <div className="p-6 max-w-3xl">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <Zap size={18} className="text-[var(--text-secondary)]" />
-          <h1 className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight">Speed Test</h1>
-        </div>
-        <p className="text-[13px] text-[var(--text-secondary)]">
-          Measure download, upload, latency, and jitter
-        </p>
-      </div>
-
-      {/* Test area */}
-      <div className="bg-white rounded-2xl border border-[var(--border)] p-6 mb-5" style={{ boxShadow: "var(--shadow-card)" }}>
-        <div className="flex flex-col items-center">
-          {/* Gauge */}
-          <GaugeRing score={result?.score ?? (phase === "idle" ? 0 : Math.round(progress * 0.7))} />
-
-          {/* Phase label */}
-          {phase !== "idle" && phase !== "done" && (
-            <p className="text-[13px] text-[var(--text-secondary)] mt-3 animate-pulse">
-              {phaseLabel[phase]}
-            </p>
-          )}
-
-          {/* Progress bar */}
-          {phase !== "idle" && phase !== "done" && (
-            <div className="w-48 h-1 bg-[var(--surface)] rounded-full mt-3 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-300"
-                style={{
-                  width: `${progress}%`,
-                  background: "linear-gradient(90deg, #60a5fa, #a78bfa)",
-                }}
-              />
-            </div>
-          )}
-
-          {/* Run button */}
-          {(phase === "idle" || phase === "done") && (
-            <button
-              onClick={runTest}
-              className="mt-5 btn-primary px-8 py-3 text-[15px] font-semibold rounded-2xl"
-            >
-              {phase === "done" ? "Run Again" : "Start Test"}
-            </button>
-          )}
-        </div>
-
-        {/* Live chart during download */}
-        {phase === "download" && livePoints.length > 2 && (
-          <div className="mt-5 bg-[var(--surface)] rounded-xl p-3">
-            <p className="text-[11px] text-[var(--text-tertiary)] mb-2 font-medium tracking-wide uppercase">
-              Live Download
-            </p>
-            <ResponsiveContainer width="100%" height={80}>
-              <AreaChart data={livePoints} margin={{ top: 2, right: 4, bottom: 0, left: 0 }}>
-                <defs>
-                  <linearGradient id="dlg" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#60a5fa" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#60a5fa" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area type="monotone" dataKey="mbps" stroke="#60a5fa" strokeWidth={2} fill="url(#dlg)" dot={false} isAnimationActive={false} />
-                <YAxis hide domain={[0, "auto"]} />
-                <Tooltip
-                  contentStyle={{ background: "white", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 8, fontSize: 11 }}
-                  formatter={(v) => [`${v} Mbps`, ""]}
-                  labelFormatter={() => ""}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+    <div className="p-6 max-w-2xl">
+      <div className="flex items-center gap-2 mb-6">
+        <Zap size={18} className="text-[var(--text-secondary)]" />
+        <h1 className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight">Speed Test</h1>
+        {ping !== null && (
+          <span className="ml-auto text-[12px] text-[var(--text-tertiary)]">
+            Ping <span className="font-semibold text-[var(--text-primary)]">{ping}ms</span>
+          </span>
         )}
       </div>
 
-      {/* Results grid */}
-      {result && (
-        <>
-          <p className="text-[11px] text-[var(--text-tertiary)] mb-3 tracking-wide">
-            💡 Tap any card for AI explanation
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            <MetricCard icon={Download} label="Download" value={result.download} unit="Mbps" color="#3b82f6"
-              onClick={() => openExplainer({ name: "Download Speed", value: result!.download, unit: "Mbps", color: "96,165,250",
-                context: `Upload: ${result!.upload}Mbps, Latency: ${result!.latency}ms` })} />
-            <MetricCard icon={Upload} label="Upload" value={result.upload} unit="Mbps" color="#8b5cf6"
-              onClick={() => openExplainer({ name: "Upload Speed", value: result!.upload, unit: "Mbps", color: "167,139,250",
-                context: `Download: ${result!.download}Mbps, Latency: ${result!.latency}ms` })} />
-            <MetricCard icon={Timer} label="Latency" value={result.latency} unit="ms" color="#16a34a"
-              onClick={() => openExplainer({ name: "Network Latency", value: result!.latency, unit: "ms", color: "34,197,94",
-                context: `Jitter: ${result!.jitter}ms, Packet Loss: ${result!.packetLoss}%` })} />
-            <MetricCard icon={Activity} label="Jitter" value={result.jitter} unit="ms" color="#d97706"
-              onClick={() => openExplainer({ name: "Network Jitter", value: result!.jitter, unit: "ms", color: "251,191,36",
-                context: `Latency: ${result!.latency}ms, Download: ${result!.download}Mbps` })} />
-            <MetricCard icon={Wifi} label="Packet Loss" value={result.packetLoss} unit="%" color={result.packetLoss > 0 ? "#dc2626" : "#16a34a"}
-              onClick={() => openExplainer({ name: "Packet Loss", value: result!.packetLoss, unit: "%", color: result!.packetLoss > 0 ? "239,68,68" : "34,197,94",
-                context: `Latency: ${result!.latency}ms, Jitter: ${result!.jitter}ms` })} />
-            <MetricCard icon={Zap} label="Health Score" value={result.score} unit="/ 100" color={scoreLabel(result.score).color}
-              onClick={() => openExplainer({ name: "Network Health Score", value: result!.score, unit: "/ 100", color: "96,165,250",
-                context: `Download: ${result!.download}Mbps, Upload: ${result!.upload}Mbps, Latency: ${result!.latency}ms, Jitter: ${result!.jitter}ms` })} />
+      <div className="bg-white rounded-3xl border border-[var(--border)] overflow-hidden"
+        style={{ boxShadow: "0 4px 40px rgba(0,0,0,0.08)" }}>
+
+        {/* Phase tabs */}
+        {phase !== "idle" && (
+          <div className="flex border-b border-[var(--border)]">
+            {[
+              { key: "download", label: "DOWNLOAD", c: "#22d3ee", val: result?.download },
+              { key: "upload", label: "UPLOAD", c: "#a855f7", val: result?.upload },
+            ].map(({ key, label, c, val }) => {
+              const active = phase === key || (phase === "done");
+              return (
+                <div key={key} className="flex-1 py-2.5 flex items-center justify-center gap-2 transition-all"
+                  style={{
+                    borderBottom: `2px solid ${active ? c : "transparent"}`,
+                    color: active ? c : "rgba(0,0,0,0.25)",
+                  }}>
+                  <span className="text-[10px] font-bold tracking-widest">{label}</span>
+                  {phase === "done" && val != null && (
+                    <span className="text-[14px] font-bold">{val}</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </>
+        )}
+
+        <div className="p-5 pt-4">
+          {/* Gauge */}
+          <Speedometer speed={liveSpeed} phase={phase} />
+
+          {/* Phase status */}
+          {isActive && (
+            <div className="flex items-center justify-center gap-1.5 -mt-2 mb-3 h-5">
+              <div className="w-1.5 h-1.5 rounded-full animate-pulse"
+                style={{ background: upload ? "#a855f7" : "#22d3ee" }} />
+              <span className="text-[12px] text-[var(--text-secondary)]">
+                {phase === "latency" ? "Measuring ping…" : phase === "download" ? "Testing download…" : "Testing upload…"}
+              </span>
+            </div>
+          )}
+
+          {/* Score badge when done */}
+          {phase === "done" && result && (
+            <div className="flex justify-center -mt-2 mb-4">
+              <span className="text-[12px] font-semibold px-3 py-1 rounded-full"
+                style={{ background: `${scoreColor}18`, color: scoreColor }}>
+                {result.score} / 100 · {scoreLbl}
+              </span>
+            </div>
+          )}
+
+          {/* Start button */}
+          {(phase === "idle" || phase === "done") && (
+            <div className="flex justify-center mb-5">
+              <button onClick={runTest}
+                className="w-20 h-20 rounded-full flex flex-col items-center justify-center gap-0.5 transition-all hover:scale-105 active:scale-95"
+                style={{
+                  border: `3px solid ${phase === "done" ? scoreColor : "#22d3ee"}`,
+                  background: `${phase === "done" ? scoreColor : "#22d3ee"}08`,
+                  boxShadow: `0 0 24px ${phase === "done" ? scoreColor : "#22d3ee"}30`,
+                  color: phase === "done" ? scoreColor : "#22d3ee",
+                }}>
+                {phase === "done" ? (
+                  <><RefreshCw size={18} /><span className="text-[9px] font-bold tracking-widest">RETEST</span></>
+                ) : (
+                  <><Zap size={20} /><span className="text-[9px] font-bold tracking-widest">START</span></>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Connection info */}
+          <div className="pt-4 border-t border-[var(--border)]">
+            <ConnBar conn={conn} />
+          </div>
+        </div>
+      </div>
+
+      {/* Metric cards */}
+      {result && phase === "done" && (
+        <div className="mt-4">
+          <p className="text-[11px] text-[var(--text-tertiary)] mb-3">
+            💡 Tap a card for AI explanation
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Download", value: result.download, unit: "Mbps", color: "#22d3ee",
+                metric: { name: "Download Speed", value: result.download, unit: "Mbps", color: "34,211,238", context: `Upload: ${result.upload}Mbps` } },
+              { label: "Upload", value: result.upload, unit: "Mbps", color: "#a855f7",
+                metric: { name: "Upload Speed", value: result.upload, unit: "Mbps", color: "168,85,247", context: `Download: ${result.download}Mbps` } },
+              { label: "Latency", value: result.latency, unit: "ms", color: "#22c55e",
+                metric: { name: "Latency", value: result.latency, unit: "ms", color: "34,197,94", context: `Jitter: ${result.jitter}ms` } },
+              { label: "Jitter", value: result.jitter, unit: "ms", color: "#f59e0b",
+                metric: { name: "Jitter", value: result.jitter, unit: "ms", color: "245,158,11" } },
+              { label: "Packet Loss", value: result.packetLoss, unit: "%",
+                color: result.packetLoss > 0 ? "#ef4444" : "#22c55e",
+                metric: { name: "Packet Loss", value: result.packetLoss, unit: "%", color: result.packetLoss > 0 ? "239,68,68" : "34,197,94" } },
+              { label: "Health Score", value: `${result.score}/100`, unit: "", color: scoreColor, metric: null },
+            ].map(({ label, value, unit, color, metric }) => (
+              <div key={label}
+                onClick={() => metric && setActiveMetric(metric)}
+                className={`metric-tile bg-white rounded-2xl p-3.5 border border-[var(--border)] ${metric ? "cursor-pointer" : ""}`}
+                style={{ boxShadow: "var(--shadow-card)" }}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-[10px] text-[var(--text-tertiary)] font-medium">{label}</p>
+                  {metric && <span className="text-[8px] px-1 py-0.5 rounded"
+                    style={{ background: `${color}18`, color }}>AI</span>}
+                </div>
+                <div className="flex items-baseline gap-0.5">
+                  <span className="text-[22px] font-bold leading-none" style={{ color }}>{value}</span>
+                  {unit && <span className="text-[10px] text-[var(--text-tertiary)]">{unit}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {activeMetric && (
