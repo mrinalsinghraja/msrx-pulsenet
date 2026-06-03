@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Zap, MapPin, Globe, Wifi, Server, RefreshCw } from "lucide-react";
+import { Zap, MapPin, Globe, Wifi, Server, RefreshCw, Monitor, Gamepad2, Video } from "lucide-react";
+import { AreaChart, Area, ResponsiveContainer, Tooltip } from "recharts";
 import { calculateScore, scoreLabel } from "@/lib/score";
 import { MetricExplainer } from "@/app/components/MetricExplainer";
 
@@ -151,6 +152,8 @@ export default function SpeedTestPage() {
   const [result, setResult] = useState<Result | null>(null);
   const [conn, setConn] = useState<ConnInfo | null>(null);
   const [activeMetric, setActiveMetric] = useState<MetricInfo | null>(null);
+  const [dlPoints, setDlPoints] = useState<{ t: number; mbps: number }[]>([]);
+  const [upPoints, setUpPoints] = useState<{ t: number; mbps: number }[]>([]);
 
   useEffect(() => {
     fetch("/api/ip-info").then(r => r.json()).then(setConn).catch(() => {});
@@ -161,6 +164,8 @@ export default function SpeedTestPage() {
     setResult(null);
     setLiveSpeed(0);
     setPing(null);
+    setDlPoints([]);
+    setUpPoints([]);
 
     // 1 — Latency
     const samp: number[] = [];
@@ -184,18 +189,23 @@ export default function SpeedTestPage() {
     setPhase("download");
     setLastActivePhase("download");
     setLiveSpeed(0);
+    setDlPoints([]);
     let dlMbps = 0;
     try {
       const res = await fetch("https://speed.cloudflare.com/__down?bytes=25000000", { cache: "no-store" });
       const reader = res.body!.getReader();
       let bytes = 0, t0 = performance.now(), tL = t0, bL = 0;
+      const pts: { t: number; mbps: number }[] = [];
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         bytes += value.length;
         const now = performance.now();
         if (now - tL >= 150) {
-          setLiveSpeed(Math.round(((bytes - bL) * 8) / ((now - tL) / 1000) / 1_000_000 * 10) / 10);
+          const instantMbps = Math.round(((bytes - bL) * 8) / ((now - tL) / 1000) / 1_000_000 * 10) / 10;
+          setLiveSpeed(instantMbps);
+          pts.push({ t: Math.round((now - t0) / 100) / 10, mbps: instantMbps });
+          setDlPoints([...pts]);
           bL = bytes; tL = now;
         }
       }
@@ -203,35 +213,48 @@ export default function SpeedTestPage() {
     } catch { /* */ }
     setLiveSpeed(dlMbps);
 
-    // 3 — Upload (6 parallel streams × 8MB = 48MB total)
+    // 3 — Upload: time-based 5s window, sequential chunks to Cloudflare nearest PoP
     setPhase("upload");
     setLastActivePhase("upload");
     setLiveSpeed(0);
+    setUpPoints([]);
     let ulMbps = 0;
-    const STREAMS = 8, CHUNK = 2_000_000; // 2MB × 8 streams = 16MB; under 4.5MB Edge body limit
     try {
+      const CHUNK = 2_000_000; // 2MB per request — stays under limits
       const buf = new Uint8Array(CHUNK).fill(65);
+      const TEST_DURATION = 5500; // 5.5 seconds
       const t0 = performance.now();
-      let done_ = 0;
+      let totalBytes = 0;
+      const ulPts: { t: number; mbps: number }[] = [];
 
-      await Promise.all(Array.from({ length: STREAMS }, () =>
-        new Promise<void>(res => {
-          const xhr = new XMLHttpRequest();
-          xhr.onloadend = () => {
-            done_++;
-            const el = (performance.now() - t0) / 1000;
-            if (el > 0.1) setLiveSpeed(Math.round((done_ * CHUNK * 8) / el / 1_000_000 * 10) / 10);
-            res();
-          };
-          xhr.timeout = 30000;
-          xhr.ontimeout = () => res();
-          xhr.open("POST", "https://pulsenet.msrx.co.in/api/speed-test/upload");
-          xhr.send(buf.buffer.slice(0));
-        })
-      ));
+      // Run concurrent streams for TEST_DURATION ms
+      const runStream = async () => {
+        while (performance.now() - t0 < TEST_DURATION) {
+          await new Promise<void>(resolve => {
+            const xhr = new XMLHttpRequest();
+            xhr.onloadend = () => {
+              totalBytes += CHUNK;
+              const el = (performance.now() - t0) / 1000;
+              if (el > 0.2) {
+                const instantMbps = Math.round((totalBytes * 8) / el / 1_000_000 * 10) / 10;
+                setLiveSpeed(instantMbps);
+                ulPts.push({ t: Math.round(el * 10) / 10, mbps: instantMbps });
+                setUpPoints([...ulPts]);
+              }
+              resolve();
+            };
+            xhr.timeout = 10000;
+            xhr.ontimeout = () => resolve();
+            // Use Cloudflare __up — routes to nearest PoP (Bangalore for India)
+            xhr.open("POST", "https://speed.cloudflare.com/__up");
+            xhr.send(buf.buffer.slice(0));
+          });
+        }
+      };
 
+      await Promise.all(Array.from({ length: 4 }, runStream)); // 4 concurrent streams
       const elapsed = (performance.now() - t0) / 1000;
-      ulMbps = elapsed > 0.1 ? Math.round((CHUNK * STREAMS * 8) / elapsed / 1_000_000 * 10) / 10 : 0;
+      ulMbps = elapsed > 0.5 ? Math.round((totalBytes * 8) / elapsed / 1_000_000 * 10) / 10 : 0;
     } catch { /* */ }
     setLiveSpeed(ulMbps);
 
@@ -345,9 +368,71 @@ export default function SpeedTestPage() {
         </div>
       </div>
 
+      {/* Two-panel live charts (download + upload) */}
+      {result && phase === "done" && (dlPoints.length > 2 || upPoints.length > 2) && (
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {dlPoints.length > 2 && (
+            <div className="bg-white rounded-2xl p-4 border border-[var(--border)]" style={{ boxShadow: "var(--shadow-card)" }}>
+              <p className="text-[10px] font-semibold tracking-wider mb-2" style={{ color: "#22d3ee" }}>DOWNLOAD</p>
+              <ResponsiveContainer width="100%" height={60}>
+                <AreaChart data={dlPoints} margin={{ top: 2, right: 2, bottom: 0, left: 0 }}>
+                  <defs><linearGradient id="dlAreaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22d3ee" stopOpacity={0.3} /><stop offset="100%" stopColor="#22d3ee" stopOpacity={0} /></linearGradient></defs>
+                  <Area type="monotone" dataKey="mbps" stroke="#22d3ee" strokeWidth={1.5} fill="url(#dlAreaG)" dot={false} isAnimationActive={false} />
+                  <Tooltip contentStyle={{ fontSize: 10, borderRadius: 6, border: "1px solid rgba(0,0,0,0.08)" }} formatter={(v) => [`${v} Mbps`, ""]} labelFormatter={() => ""} />
+                </AreaChart>
+              </ResponsiveContainer>
+              <p className="text-[11px] font-semibold mt-1" style={{ color: "#22d3ee" }}>{result.download} Mbps</p>
+            </div>
+          )}
+          {upPoints.length > 2 && (
+            <div className="bg-white rounded-2xl p-4 border border-[var(--border)]" style={{ boxShadow: "var(--shadow-card)" }}>
+              <p className="text-[10px] font-semibold tracking-wider mb-2" style={{ color: "#a855f7" }}>UPLOAD</p>
+              <ResponsiveContainer width="100%" height={60}>
+                <AreaChart data={upPoints} margin={{ top: 2, right: 2, bottom: 0, left: 0 }}>
+                  <defs><linearGradient id="ulAreaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#a855f7" stopOpacity={0.3} /><stop offset="100%" stopColor="#a855f7" stopOpacity={0} /></linearGradient></defs>
+                  <Area type="monotone" dataKey="mbps" stroke="#a855f7" strokeWidth={1.5} fill="url(#ulAreaG)" dot={false} isAnimationActive={false} />
+                  <Tooltip contentStyle={{ fontSize: 10, borderRadius: 6, border: "1px solid rgba(0,0,0,0.08)" }} formatter={(v) => [`${v} Mbps`, ""]} labelFormatter={() => ""} />
+                </AreaChart>
+              </ResponsiveContainer>
+              <p className="text-[11px] font-semibold mt-1" style={{ color: "#a855f7" }}>{result.upload} Mbps</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Network Quality Score (from Cloudflare model) */}
+      {result && phase === "done" && (
+        <div className="mt-3 bg-white rounded-2xl border border-[var(--border)] p-4" style={{ boxShadow: "var(--shadow-card)" }}>
+          <p className="text-[11px] font-semibold text-[var(--text-tertiary)] uppercase tracking-wide mb-3">Network Quality</p>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { icon: Monitor, label: "Streaming", color: "#22d3ee",
+                rating: result.download > 50 && result.jitter < 15 ? "Great" : result.download > 25 ? "Good" : result.download > 10 ? "Fair" : "Poor" },
+              { icon: Gamepad2, label: "Gaming", color: "#a855f7",
+                rating: result.latency < 20 && result.jitter < 8 ? "Great" : result.latency < 40 && result.jitter < 15 ? "Good" : result.latency < 80 ? "Fair" : "Poor" },
+              { icon: Video, label: "Video Chat", color: "#22c55e",
+                rating: result.upload > 10 && result.latency < 50 ? "Great" : result.upload > 5 && result.latency < 80 ? "Good" : result.upload > 2 ? "Fair" : "Poor" },
+            ].map(({ icon: Icon, label, color, rating }) => {
+              const ratingColor = rating === "Great" ? "#22c55e" : rating === "Good" ? "#22d3ee" : rating === "Fair" ? "#f59e0b" : "#ef4444";
+              return (
+                <div key={label} className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${color}12` }}>
+                    <Icon size={14} style={{ color }} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[var(--text-tertiary)]">{label}</p>
+                    <p className="text-[13px] font-semibold" style={{ color: ratingColor }}>{rating}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Metric cards */}
       {result && phase === "done" && (
-        <div className="mt-4">
+        <div className="mt-3">
           <p className="text-[11px] text-[var(--text-tertiary)] mb-3">
             💡 Tap a card for AI explanation
           </p>
