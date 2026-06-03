@@ -77,9 +77,11 @@ export function MetricExplainer({
       <div
         className="relative w-full max-w-sm rounded-3xl overflow-hidden"
         style={{
-          background: "linear-gradient(135deg, rgba(8,8,20,0.97) 0%, rgba(15,10,35,0.97) 100%)",
-          border: "1px solid rgba(96,165,250,0.2)",
-          boxShadow: "0 30px 80px rgba(0,0,0,0.5), 0 0 40px rgba(96,165,250,0.08)",
+          // Deep indigo-navy glassmorphism — NOT black. Lighter, more premium.
+          background: "linear-gradient(145deg, rgba(22,30,75,0.96) 0%, rgba(35,22,80,0.96) 100%)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid rgba(120,140,255,0.25)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.4), 0 0 50px rgba(100,120,255,0.12), inset 0 1px 0 rgba(255,255,255,0.08)",
         }}
       >
         {/* Subtle aurora inside modal */}
@@ -175,7 +177,7 @@ export function MetricExplainer({
                     What This Means
                   </span>
                 </div>
-                <p className="text-[13px] leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: "rgba(220,230,255,0.8)" }}>
                   {data.explanation}
                 </p>
               </div>
@@ -189,7 +191,7 @@ export function MetricExplainer({
                     Recommendation
                   </span>
                 </div>
-                <p className="text-[13px] leading-relaxed" style={{ color: "rgba(255,255,255,0.65)" }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: "rgba(220,230,255,0.8)" }}>
                   {data.recommendation}
                 </p>
               </div>
@@ -201,7 +203,7 @@ export function MetricExplainer({
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full animate-pulse"
                 style={{ background: `rgb(${metric.color})` }} />
-              <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>
+              <span className="text-[10px]" style={{ color: "rgba(180,200,255,0.5)" }}>
                 Powered by Groq AI
               </span>
             </div>
@@ -209,9 +211,9 @@ export function MetricExplainer({
               onClick={onClose}
               className="px-4 py-1.5 rounded-xl text-[13px] font-medium transition-all"
               style={{
-                background: "rgba(255,255,255,0.08)",
-                color: "rgba(255,255,255,0.7)",
-                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.12)",
+                color: "rgba(220,235,255,0.85)",
+                border: "1px solid rgba(255,255,255,0.18)",
               }}
             >
               Done

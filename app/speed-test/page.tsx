@@ -349,16 +349,20 @@ export default function SpeedTestPage() {
             </div>
           )}
 
-          {/* Start button */}
+          {/* Start / Retest button — 3D with gradient + depth shadow */}
           {(phase === "idle" || phase === "done") && (
             <div className="flex justify-center mb-5">
               <button onClick={runTest}
-                className="w-20 h-20 rounded-full flex flex-col items-center justify-center gap-0.5 transition-all hover:scale-105 active:scale-95"
+                className="w-20 h-20 rounded-full flex flex-col items-center justify-center gap-0.5 transition-all hover:scale-[1.06] active:scale-95"
                 style={{
-                  border: `3px solid ${phase === "done" ? scoreColor : "#22d3ee"}`,
-                  background: `${phase === "done" ? scoreColor : "#22d3ee"}08`,
-                  boxShadow: `0 0 24px ${phase === "done" ? scoreColor : "#22d3ee"}30`,
-                  color: phase === "done" ? scoreColor : "#22d3ee",
+                  background: phase === "done"
+                    ? `linear-gradient(145deg, ${scoreColor}cc 0%, ${scoreColor} 60%, ${scoreColor}dd 100%)`
+                    : "linear-gradient(145deg, #45e8ff 0%, #22d3ee 55%, #0db8d4 100%)",
+                  boxShadow: phase === "done"
+                    ? `0 8px 24px ${scoreColor}55, 0 2px 6px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.35), inset 0 -2px 4px rgba(0,0,0,0.15)`
+                    : "0 8px 24px rgba(34,211,238,0.5), 0 2px 6px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -2px 4px rgba(0,0,0,0.12)",
+                  color: "white",
+                  border: "none",
                 }}>
                 {phase === "done" ? (
                   <><RefreshCw size={18} /><span className="text-[9px] font-bold tracking-widest">RETEST</span></>
@@ -384,15 +388,19 @@ export default function SpeedTestPage() {
             { pts: upPoints, color: "#a855f7", gradId: "ulAreaG", label: "UPLOAD", val: result.upload },
           ].map(({ pts, color, gradId, label, val }) => pts.length > 2 && (
             <div key={label} className="bg-white rounded-2xl p-4 border border-[var(--border)]" style={{ boxShadow: "var(--shadow-card)" }}>
-              <div className="flex items-baseline justify-between mb-2">
-                <p className="text-[10px] font-bold tracking-wider" style={{ color }}>{label}</p>
-                <p className="text-[12px] font-semibold" style={{ color }}>{val} Mbps</p>
+              {/* Header row: label + Mbps axis label + value */}
+              <div className="flex items-start justify-between mb-1.5">
+                <div>
+                  <p className="text-[10px] font-bold tracking-wider" style={{ color }}>{label}</p>
+                  <p className="text-[9px] text-[var(--text-tertiary)]">Mbps</p>
+                </div>
+                <p className="text-[13px] font-bold" style={{ color }}>{val} Mbps</p>
               </div>
-              <ResponsiveContainer width="100%" height={110}>
-                <AreaChart data={pts} margin={{ top: 4, right: 8, bottom: 20, left: 36 }}>
+              <ResponsiveContainer width="100%" height={105}>
+                <AreaChart data={pts} margin={{ top: 4, right: 8, bottom: 18, left: 28 }}>
                   <defs>
                     <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+                      <stop offset="0%" stopColor={color} stopOpacity={0.28} />
                       <stop offset="100%" stopColor={color} stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
@@ -403,15 +411,15 @@ export default function SpeedTestPage() {
                     tickLine={false}
                     axisLine={{ stroke: "rgba(0,0,0,0.08)" }}
                     interval="preserveStartEnd"
-                    label={{ value: "Time (s)", position: "insideBottom", offset: -8, fontSize: 9, fill: "#a1a1a6" }}
+                    label={{ value: "Time (s)", position: "insideBottom", offset: -5, fontSize: 9, fill: "#a1a1a6" }}
                   />
                   <YAxis
                     tick={{ fontSize: 9, fill: "#a1a1a6" }}
                     tickLine={false}
                     axisLine={false}
-                    width={32}
-                    tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}G` : `${v}`}
-                    label={{ value: "Mbps", angle: -90, position: "insideLeft", offset: 8, fontSize: 9, fill: "#a1a1a6" }}
+                    width={28}
+                    tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(1)}G` : `${v}`}
+                    /* No rotated label — moved to header above */
                   />
                   <Tooltip
                     contentStyle={{ background: "white", border: `1px solid ${color}30`, borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
