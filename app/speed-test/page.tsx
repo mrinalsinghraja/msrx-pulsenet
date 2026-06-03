@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { Zap, MapPin, Globe, Wifi, Server, RefreshCw, Monitor, Gamepad2, Video } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer, Tooltip } from "recharts";
+import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import { calculateScore, scoreLabel } from "@/lib/score";
 import { MetricExplainer } from "@/app/components/MetricExplainer";
 
@@ -17,23 +17,24 @@ function mbpsToFraction(mbps: number) {
   if (mbps <= 0) return 0;
   return Math.min(Math.log(1 + mbps) / Math.log(1 + MAX_MBPS), 1);
 }
-function fractionToAngle(f: number) { return 135 + f * 270; } // 135→405°
+function fractionToAngle(f: number) { return 135 + f * 270; }
 
 function polarXY(cx: number, cy: number, r: number, deg: number) {
   const rad = (deg * Math.PI) / 180;
   return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
 }
-function arcPath(cx: number, cy: number, r: number, a1: number, a2: number) {
-  const s = polarXY(cx, cy, r, a1);
-  const e = polarXY(cx, cy, r, a2);
-  const sweep = ((a2 - a1) + 360) % 360;
-  return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r} ${r} 0 ${sweep > 180 ? 1 : 0} 1 ${e.x.toFixed(2)} ${e.y.toFixed(2)}`;
-}
+
+// Fixed full-arc path (270°, from 135° → 405°). Both track and fill use same path.
+// Fill controlled via strokeDashoffset — the ONLY reliable CSS-animatable arc property.
+const CX = 150, CY = 148, R_ARC = 110;
+const _s = polarXY(CX, CY, R_ARC, 135);
+const _e = polarXY(CX, CY, R_ARC, 405);
+const FULL_ARC_PATH = `M ${_s.x.toFixed(2)} ${_s.y.toFixed(2)} A ${R_ARC} ${R_ARC} 0 1 1 ${_e.x.toFixed(2)} ${_e.y.toFixed(2)}`;
+const ARC_LENGTH = R_ARC * 270 * Math.PI / 180; // ≈ 518px
 
 // ── Scale ticks ──────────────────────────────────────────────────────────────
 const TICKS = [0, 5, 10, 25, 50, 100, 250, 500, 750, 1000];
 const MAJOR = [0, 50, 100, 500, 1000];
-const CX = 150, CY = 148;
 
 // ── Speedometer ──────────────────────────────────────────────────────────────
 function Speedometer({ speed, phase, lastActivePhase }: { speed: number; phase: Phase; lastActivePhase: "download" | "upload" }) {
@@ -42,11 +43,11 @@ function Speedometer({ speed, phase, lastActivePhase }: { speed: number; phase: 
   const c1 = upload ? "#a855f7" : "#22d3ee";
   const c2 = upload ? "#ec4899" : "#3b82f6";
   const active = phase !== "idle";
-  const f = mbpsToFraction(speed);
-  const fillEnd = fractionToAngle(f);
 
-  const trackPath = arcPath(CX, CY, 110, 135, 405);
-  const fillPath = f > 0.003 ? arcPath(CX, CY, 110, 135, fillEnd) : null;
+  // strokeDashoffset animation: offset = full_length - filled_length
+  // CSS transition on strokeDashoffset is hardware-accelerated and perfectly smooth
+  const fillLength = mbpsToFraction(speed) * ARC_LENGTH;
+  const dashOffset = active ? ARC_LENGTH - fillLength : ARC_LENGTH;
 
   const displayNum = speed >= 100
     ? Math.round(speed).toString()
@@ -55,26 +56,33 @@ function Speedometer({ speed, phase, lastActivePhase }: { speed: number; phase: 
   return (
     <svg viewBox="0 0 300 230" className="w-full max-w-xs mx-auto select-none">
       <defs>
-        <linearGradient id={gid} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor={c1} />
-          <stop offset="100%" stopColor={c2} />
+        <linearGradient id="gu" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#a855f7" /><stop offset="100%" stopColor="#ec4899" />
+        </linearGradient>
+        <linearGradient id="gd" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#22d3ee" /><stop offset="100%" stopColor="#3b82f6" />
         </linearGradient>
         <filter id="gaugeGlow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feGaussianBlur stdDeviation="3.5" result="blur" />
           <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
       </defs>
 
-      {/* Track */}
-      <path d={trackPath} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth="12" strokeLinecap="round" />
+      {/* Track — full 270° arc, muted */}
+      <path d={FULL_ARC_PATH} fill="none" stroke="rgba(0,0,0,0.07)" strokeWidth="12" strokeLinecap="round" />
 
-      {/* Fill */}
-      {active && fillPath && (
-        <path d={fillPath} fill="none" stroke={`url(#${gid})`}
-          strokeWidth="12" strokeLinecap="round"
-          filter="url(#gaugeGlow)"
-          style={{ transition: "d 0.12s linear" }} />
-      )}
+      {/* Fill — same 270° arc, clipped via strokeDashoffset (smooth CSS animation) */}
+      <path
+        d={FULL_ARC_PATH}
+        fill="none"
+        stroke={`url(#${gid})`}
+        strokeWidth="12"
+        strokeLinecap="round"
+        strokeDasharray={`${ARC_LENGTH} ${ARC_LENGTH}`}
+        strokeDashoffset={dashOffset}
+        filter="url(#gaugeGlow)"
+        style={{ transition: "stroke-dashoffset 0.25s ease-out" }}
+      />
 
       {/* Scale ticks */}
       {TICKS.map((v) => {
@@ -368,35 +376,63 @@ export default function SpeedTestPage() {
         </div>
       </div>
 
-      {/* Two-panel live charts (download + upload) */}
+      {/* Two-panel charts with axes + gridlines */}
       {result && phase === "done" && (dlPoints.length > 2 || upPoints.length > 2) && (
         <div className="mt-4 grid grid-cols-2 gap-3">
-          {dlPoints.length > 2 && (
-            <div className="bg-white rounded-2xl p-4 border border-[var(--border)]" style={{ boxShadow: "var(--shadow-card)" }}>
-              <p className="text-[10px] font-semibold tracking-wider mb-2" style={{ color: "#22d3ee" }}>DOWNLOAD</p>
-              <ResponsiveContainer width="100%" height={60}>
-                <AreaChart data={dlPoints} margin={{ top: 2, right: 2, bottom: 0, left: 0 }}>
-                  <defs><linearGradient id="dlAreaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#22d3ee" stopOpacity={0.3} /><stop offset="100%" stopColor="#22d3ee" stopOpacity={0} /></linearGradient></defs>
-                  <Area type="monotone" dataKey="mbps" stroke="#22d3ee" strokeWidth={1.5} fill="url(#dlAreaG)" dot={false} isAnimationActive={false} />
-                  <Tooltip contentStyle={{ fontSize: 10, borderRadius: 6, border: "1px solid rgba(0,0,0,0.08)" }} formatter={(v) => [`${v} Mbps`, ""]} labelFormatter={() => ""} />
+          {[
+            { pts: dlPoints, color: "#22d3ee", gradId: "dlAreaG", label: "DOWNLOAD", val: result.download },
+            { pts: upPoints, color: "#a855f7", gradId: "ulAreaG", label: "UPLOAD", val: result.upload },
+          ].map(({ pts, color, gradId, label, val }) => pts.length > 2 && (
+            <div key={label} className="bg-white rounded-2xl p-4 border border-[var(--border)]" style={{ boxShadow: "var(--shadow-card)" }}>
+              <div className="flex items-baseline justify-between mb-2">
+                <p className="text-[10px] font-bold tracking-wider" style={{ color }}>{label}</p>
+                <p className="text-[12px] font-semibold" style={{ color }}>{val} Mbps</p>
+              </div>
+              <ResponsiveContainer width="100%" height={110}>
+                <AreaChart data={pts} margin={{ top: 4, right: 8, bottom: 20, left: 36 }}>
+                  <defs>
+                    <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+                      <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
+                  <XAxis
+                    dataKey="t"
+                    tick={{ fontSize: 9, fill: "#a1a1a6" }}
+                    tickLine={false}
+                    axisLine={{ stroke: "rgba(0,0,0,0.08)" }}
+                    interval="preserveStartEnd"
+                    label={{ value: "Time (s)", position: "insideBottom", offset: -8, fontSize: 9, fill: "#a1a1a6" }}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 9, fill: "#a1a1a6" }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={32}
+                    tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}G` : `${v}`}
+                    label={{ value: "Mbps", angle: -90, position: "insideLeft", offset: 8, fontSize: 9, fill: "#a1a1a6" }}
+                  />
+                  <Tooltip
+                    contentStyle={{ background: "white", border: `1px solid ${color}30`, borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
+                    formatter={(v: number | string) => [`${v} Mbps`, label === "DOWNLOAD" ? "Download" : "Upload"]}
+                    labelFormatter={(l) => `${l}s`}
+                    cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: "4 2" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="mbps"
+                    stroke={color}
+                    strokeWidth={2}
+                    fill={`url(#${gradId})`}
+                    dot={false}
+                    activeDot={{ r: 3, fill: color, strokeWidth: 0 }}
+                    isAnimationActive={false}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
-              <p className="text-[11px] font-semibold mt-1" style={{ color: "#22d3ee" }}>{result.download} Mbps</p>
             </div>
-          )}
-          {upPoints.length > 2 && (
-            <div className="bg-white rounded-2xl p-4 border border-[var(--border)]" style={{ boxShadow: "var(--shadow-card)" }}>
-              <p className="text-[10px] font-semibold tracking-wider mb-2" style={{ color: "#a855f7" }}>UPLOAD</p>
-              <ResponsiveContainer width="100%" height={60}>
-                <AreaChart data={upPoints} margin={{ top: 2, right: 2, bottom: 0, left: 0 }}>
-                  <defs><linearGradient id="ulAreaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#a855f7" stopOpacity={0.3} /><stop offset="100%" stopColor="#a855f7" stopOpacity={0} /></linearGradient></defs>
-                  <Area type="monotone" dataKey="mbps" stroke="#a855f7" strokeWidth={1.5} fill="url(#ulAreaG)" dot={false} isAnimationActive={false} />
-                  <Tooltip contentStyle={{ fontSize: 10, borderRadius: 6, border: "1px solid rgba(0,0,0,0.08)" }} formatter={(v) => [`${v} Mbps`, ""]} labelFormatter={() => ""} />
-                </AreaChart>
-              </ResponsiveContainer>
-              <p className="text-[11px] font-semibold mt-1" style={{ color: "#a855f7" }}>{result.upload} Mbps</p>
-            </div>
-          )}
+          ))}
         </div>
       )}
 
