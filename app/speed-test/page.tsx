@@ -208,7 +208,7 @@ export default function SpeedTestPage() {
     setLastActivePhase("upload");
     setLiveSpeed(0);
     let ulMbps = 0;
-    const STREAMS = 6, CHUNK = 8_000_000;
+    const STREAMS = 8, CHUNK = 2_000_000; // 2MB × 8 streams = 16MB; under 4.5MB Edge body limit
     try {
       const buf = new Uint8Array(CHUNK).fill(65);
       const t0 = performance.now();
