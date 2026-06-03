@@ -118,11 +118,11 @@ export default function SpeedTestPage() {
     // ── 1. Latency + jitter ──────────────────────────────────────────────────
     const latSamples: number[] = [];
     let failed = 0;
-    // Ping Cloudflare CDN — measures real internet RTT, not localhost loopback
+    // Ping Cloudflare CDN nearest PoP — __down?bytes=0 = pure RTT, no data transfer
     for (let i = 0; i < 10; i++) {
       try {
         const t0 = performance.now();
-        await fetch("https://speed.cloudflare.com/__down?bytes=1", { cache: "no-store", mode: "no-cors" });
+        await fetch("https://speed.cloudflare.com/__down?bytes=0", { cache: "no-store" });
         latSamples.push(performance.now() - t0);
       } catch { failed++; }
     }
@@ -169,13 +169,14 @@ export default function SpeedTestPage() {
 
     setProgress(60);
 
-    // ── 3. Upload speed — XHR to Vercel, timed from send() to onloadend
-    // No Content-Type header = text/plain (simple, no preflight CORS)
+    // ── 3. Upload speed — XHR to own Vercel Edge endpoint (global, nearest region)
+    // Edge runtime deploys to Mumbai/Singapore/etc — accurate for India/Asia users
+    // Time from send() to onloadend = full round-trip (upload + tiny server ack)
     setPhase("upload");
     const upPoints: { t: number; mbps: number }[] = [];
     let ulMbps = 0;
     await new Promise<void>((resolve) => {
-      const ulSize = 3_000_000;
+      const ulSize = 10_000_000; // 10MB for accuracy on fast connections
       const data = new Uint8Array(ulSize).fill(65);
       const xhr = new XMLHttpRequest();
       const t0 = performance.now();
@@ -188,10 +189,10 @@ export default function SpeedTestPage() {
         setLivePoints(upPoints);
         resolve();
       };
-      xhr.timeout = 20000;
+      xhr.timeout = 30000;
       xhr.ontimeout = () => resolve();
-      xhr.open("POST", "https://pulsenet-msrx.vercel.app/api/speed-test/upload");
-      // No Content-Type = text/plain = simple request, no CORS preflight needed
+      xhr.open("POST", "https://pulsenet.msrx.co.in/api/speed-test/upload");
+      // No Content-Type = text/plain = simple CORS (no preflight)
       xhr.send(data.buffer);
     });
 
