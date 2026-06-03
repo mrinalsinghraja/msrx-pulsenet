@@ -47,7 +47,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-56 shrink-0 bg-white border-r border-[var(--border)] flex flex-col h-screen sticky top-0">
+    <aside className="hidden md:flex w-56 shrink-0 bg-white border-r border-[var(--border)] flex-col h-screen sticky top-0">
       {/* Logo */}
       <div className="px-4 h-14 flex items-center gap-2.5 border-b border-[var(--border)]">
         <PulseNetLogo size={26} />

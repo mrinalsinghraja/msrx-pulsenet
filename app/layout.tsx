@@ -16,6 +16,7 @@ export const metadata: Metadata = {
 };
 
 import { Sidebar } from "./components/Sidebar";
+import { MobileNav } from "./components/MobileNav";
 import { AuroraBackground } from "./components/AuroraBackground";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -24,7 +25,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="flex h-screen bg-[var(--surface)] overflow-hidden">
         <AuroraBackground />
         <Sidebar />
-        <div className="relative flex-1 overflow-y-auto" style={{ zIndex: 1 }}>{children}</div>
+        <MobileNav />
+        {/* pb-16 on mobile = space above bottom nav; none on desktop (md:pb-0) */}
+        <div className="relative flex-1 overflow-y-auto pb-16 md:pb-0" style={{ zIndex: 1 }}>
+          {children}
+        </div>
       </body>
     </html>
   );
