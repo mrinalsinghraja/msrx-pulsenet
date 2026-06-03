@@ -142,7 +142,7 @@ export default function HistoryPage() {
                 <XAxis dataKey="time" tick={{ fontSize: 10, fill: "#a1a1a6" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 10, fill: "#a1a1a6" }} tickLine={false} axisLine={false} width={48} tickFormatter={(v) => `${v}M`} />
                 <Tooltip contentStyle={{ background: "white", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 10, fontSize: 11 }}
-                  formatter={(v: number | undefined, name: string) => [`${v ?? "—"} Mbps`, name === "dl" ? "Download" : "Upload"]} />
+                  formatter={(v, name) => [`${v} Mbps`, String(name) === "dl" ? "Download" : "Upload"]} />
                 <Area type="monotone" dataKey="dl" stroke="#60a5fa" strokeWidth={2} fill="url(#dlh)" dot={false} isAnimationActive={false} name="dl" />
                 <Area type="monotone" dataKey="ul" stroke="#a78bfa" strokeWidth={2} fill="url(#ulh)" dot={false} isAnimationActive={false} name="ul" />
               </AreaChart>
@@ -170,7 +170,7 @@ export default function HistoryPage() {
                 <XAxis dataKey="time" tick={{ fontSize: 10, fill: "#a1a1a6" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 10, fill: "#a1a1a6" }} tickLine={false} axisLine={false} width={40} tickFormatter={(v) => `${v}ms`} />
                 <Tooltip contentStyle={{ background: "white", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 10, fontSize: 11 }}
-                  formatter={(v: number | undefined) => [`${v ?? "—"} ms`, "Latency"]} />
+                  formatter={(v) => [`${v} ms`, "Latency"]} />
                 <Area type="monotone" dataKey="lat" stroke="#16a34a" strokeWidth={2} fill="url(#lath)" dot={false} isAnimationActive={false} name="lat" />
               </AreaChart>
             </ResponsiveContainer>
