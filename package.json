@@ -10,19 +10,20 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
-    "@libsql/client": "^0.8.1",
-    "@prisma/adapter-libsql": "^5.22.0",
-    "@prisma/client": "^5.22.0",
+    "@libsql/client": "^0.14.0",
+    "@prisma/adapter-libsql": "^6.6.0",
+    "@prisma/client": "^6.6.0",
     "groq-sdk": "^1.2.1",
     "lucide-react": "^1.17.0",
     "next": "16.2.7",
-    "prisma": "^5.22.0",
+    "prisma": "^6.6.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
     "recharts": "^3.8.1",
     "swr": "^2.4.1"
   },
+
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
