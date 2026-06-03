@@ -1,0 +1,58 @@
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../node_modules/.prisma/client"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Monitor {
+  id          String   @id @default(cuid())
+  name        String
+  url         String
+  interval    Int      @default(5)
+  createdAt   DateTime @default(now())
+  checks      Check[]
+}
+
+model Check {
+  id          String   @id @default(cuid())
+  monitorId   String
+  monitor     Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  status      String
+  responseMs  Int?
+  statusCode  Int?
+  checkedAt   DateTime @default(now())
+
+  @@index([monitorId, checkedAt])
+}
+
+model TestSession {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+  download       Float?
+  upload         Float?
+  latency        Float?
+  jitter         Float?
+  packetLoss     Float?
+  score          Int?
+  isp            String?
+  ip             String?
+  location       String?
+  connectionType String?
+}
+
+model DnsLookup {
+  id        String   @id @default(cuid())
+  domain    String
+  ip        String?
+  country   String?
+  flag      String?
+  category  String?
+  dnsMs     Float?
+  org       String?
+  createdAt DateTime @default(now())
+}
