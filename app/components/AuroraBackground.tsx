@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+// Mark as client-only so useMemo particles render only on client (fixes hydration mismatch)
+import { useMemo, useState, useEffect } from "react";
 
 // Lightweight CSS aurora — 4 animated orbs + 20 twinkling particles
 // Matches AuroraBackground.swift + particle logic from LiquidOrb.swift
@@ -14,6 +15,9 @@ const ORB_CONFIGS = [
 ];
 
 export function AuroraBackground() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const particles = useMemo(() =>
     Array.from({ length: 22 }, (_, i) => ({
       id: i,
@@ -50,8 +54,8 @@ export function AuroraBackground() {
         />
       ))}
 
-      {/* Twinkling star particles */}
-      {particles.map((p) => (
+      {/* Twinkling star particles — client-only to avoid hydration mismatch */}
+      {mounted && particles.map((p) => (
         <div
           key={p.id}
           style={{
