@@ -174,12 +174,13 @@ export default function SpeedTestPage() {
     const upPoints: { t: number; mbps: number }[] = [];
     let ulMbps = 0;
     try {
-      // Upload to own server — measures real upload in production (Vercel → user)
-      // Note: inflated on localhost (loopback), correct on pulsenet.msrx.co.in
+      // Always upload to live Vercel server — measures real internet upload from both dev & prod
       const ulSize = 3_000_000;
       const data = new Uint8Array(ulSize).fill(65);
       const t0 = performance.now();
-      await fetch("/api/speed-test/upload", { method: "POST", body: data, cache: "no-store" });
+      const uploadTarget = "https://pulsenet-msrx.vercel.app/api/speed-test/upload";
+      await fetch(uploadTarget, { method: "POST", body: data, cache: "no-store",
+        headers: { "Content-Type": "application/octet-stream" } });
       const elapsed = (performance.now() - t0) / 1000;
       ulMbps = Math.round((ulSize * 8) / elapsed / 1_000_000 * 10) / 10;
       upPoints.push({ t: 0, mbps: ulMbps });
