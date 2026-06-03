@@ -423,7 +423,7 @@ export default function SpeedTestPage() {
                   />
                   <Tooltip
                     contentStyle={{ background: "white", border: `1px solid ${color}30`, borderRadius: 8, fontSize: 11, boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
-                    formatter={(v: number | string) => [`${v} Mbps`, label === "DOWNLOAD" ? "Download" : "Upload"]}
+                    formatter={(v) => [`${v} Mbps`, label === "DOWNLOAD" ? "Download" : "Upload"]}
                     labelFormatter={(l) => `${l}s`}
                     cursor={{ stroke: color, strokeWidth: 1, strokeDasharray: "4 2" }}
                   />
