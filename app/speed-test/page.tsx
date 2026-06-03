@@ -169,23 +169,31 @@ export default function SpeedTestPage() {
 
     setProgress(60);
 
-    // ── 3. Upload speed ───────────────────────────────────────────────────────
+    // ── 3. Upload speed — XHR to Vercel, timed from send() to onloadend
+    // No Content-Type header = text/plain (simple, no preflight CORS)
     setPhase("upload");
     const upPoints: { t: number; mbps: number }[] = [];
     let ulMbps = 0;
-    try {
-      // Always upload to live Vercel server — measures real internet upload from both dev & prod
+    await new Promise<void>((resolve) => {
       const ulSize = 3_000_000;
       const data = new Uint8Array(ulSize).fill(65);
+      const xhr = new XMLHttpRequest();
       const t0 = performance.now();
-      const uploadTarget = "https://pulsenet-msrx.vercel.app/api/speed-test/upload";
-      await fetch(uploadTarget, { method: "POST", body: data, cache: "no-store",
-        headers: { "Content-Type": "application/octet-stream" } });
-      const elapsed = (performance.now() - t0) / 1000;
-      ulMbps = Math.round((ulSize * 8) / elapsed / 1_000_000 * 10) / 10;
-      upPoints.push({ t: 0, mbps: ulMbps });
-      setLivePoints(upPoints);
-    } catch { /* */ }
+      xhr.onloadend = () => {
+        const elapsed = (performance.now() - t0) / 1000;
+        if (elapsed > 0.05) {
+          ulMbps = Math.round((ulSize * 8) / elapsed / 1_000_000 * 10) / 10;
+        }
+        upPoints.push({ t: 0, mbps: ulMbps });
+        setLivePoints(upPoints);
+        resolve();
+      };
+      xhr.timeout = 20000;
+      xhr.ontimeout = () => resolve();
+      xhr.open("POST", "https://pulsenet-msrx.vercel.app/api/speed-test/upload");
+      // No Content-Type = text/plain = simple request, no CORS preflight needed
+      xhr.send(data.buffer);
+    });
 
     setProgress(90);
 
