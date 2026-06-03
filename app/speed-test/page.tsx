@@ -35,8 +35,8 @@ const MAJOR = [0, 50, 100, 500, 1000];
 const CX = 150, CY = 148;
 
 // ── Speedometer ──────────────────────────────────────────────────────────────
-function Speedometer({ speed, phase }: { speed: number; phase: Phase }) {
-  const upload = phase === "upload";
+function Speedometer({ speed, phase, lastActivePhase }: { speed: number; phase: Phase; lastActivePhase: "download" | "upload" }) {
+  const upload = phase === "upload" || (phase === "done" && lastActivePhase === "upload");
   const gid = upload ? "gu" : "gd";
   const c1 = upload ? "#a855f7" : "#22d3ee";
   const c2 = upload ? "#ec4899" : "#3b82f6";
@@ -295,7 +295,7 @@ export default function SpeedTestPage() {
 
         <div className="p-5 pt-4">
           {/* Gauge */}
-          <Speedometer speed={liveSpeed} phase={phase} />
+          <Speedometer speed={liveSpeed} phase={phase} lastActivePhase={lastActivePhase} />
 
           {/* Phase status */}
           {isActive && (
