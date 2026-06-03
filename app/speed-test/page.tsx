@@ -257,7 +257,7 @@ export default function SpeedTestPage() {
                 <YAxis hide domain={[0, "auto"]} />
                 <Tooltip
                   contentStyle={{ background: "white", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 8, fontSize: 11 }}
-                  formatter={(v: number) => [`${v} Mbps`, ""]}
+                  formatter={(v: number | undefined) => [`${v ?? "—"} Mbps`, ""]}
                   labelFormatter={() => ""}
                 />
               </AreaChart>

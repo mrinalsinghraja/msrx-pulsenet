@@ -214,7 +214,7 @@ export default function Dashboard() {
                     <Area type="monotone" dataKey="ul" stroke="#a78bfa" strokeWidth={2} fill="url(#ulg-dash)" dot={false} isAnimationActive={false} name="Upload" />
                     <Tooltip
                       contentStyle={{ background: "white", border: "1px solid rgba(0,0,0,0.08)", borderRadius: 8, fontSize: 11 }}
-                      formatter={(v: number, name: string) => [`${v} Mbps`, name === "dl" ? "Download" : "Upload"]}
+                      formatter={(v: number | undefined, name: string) => [`${v ?? "—"} Mbps`, name === "dl" ? "Download" : "Upload"]}
                       labelFormatter={() => ""}
                     />
                   </AreaChart>
