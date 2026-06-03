@@ -77,11 +77,11 @@ export function MetricExplainer({
       <div
         className="relative w-full max-w-sm rounded-3xl overflow-hidden"
         style={{
-          // Deep indigo-navy glassmorphism — NOT black. Lighter, more premium.
-          background: "linear-gradient(145deg, rgba(22,30,75,0.96) 0%, rgba(35,22,80,0.96) 100%)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(120,140,255,0.25)",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.4), 0 0 50px rgba(100,120,255,0.12), inset 0 1px 0 rgba(255,255,255,0.08)",
+          // Rich blue-violet glassmorphism — clearly NOT black, visibly indigo-blue
+          background: "linear-gradient(145deg, rgba(55,70,180,0.82) 0%, rgba(70,45,175,0.82) 100%)",
+          backdropFilter: "blur(28px) saturate(180%)",
+          border: "1px solid rgba(160,180,255,0.35)",
+          boxShadow: "0 20px 60px rgba(30,30,120,0.45), 0 0 60px rgba(100,120,255,0.2), inset 0 1px 0 rgba(255,255,255,0.18)",
         }}
       >
         {/* Subtle aurora inside modal */}
@@ -177,7 +177,7 @@ export function MetricExplainer({
                     What This Means
                   </span>
                 </div>
-                <p className="text-[13px] leading-relaxed" style={{ color: "rgba(220,230,255,0.8)" }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: "rgba(225,235,255,0.92)" }}>
                   {data.explanation}
                 </p>
               </div>
@@ -191,7 +191,7 @@ export function MetricExplainer({
                     Recommendation
                   </span>
                 </div>
-                <p className="text-[13px] leading-relaxed" style={{ color: "rgba(220,230,255,0.8)" }}>
+                <p className="text-[13px] leading-relaxed" style={{ color: "rgba(225,235,255,0.92)" }}>
                   {data.recommendation}
                 </p>
               </div>
