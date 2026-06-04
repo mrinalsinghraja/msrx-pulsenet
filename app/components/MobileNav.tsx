@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Zap, Globe, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Zap, Globe, MessageSquare, Wrench } from "lucide-react";
 
 const PRIMARY_NAV = [
   { href: "/", icon: LayoutDashboard, label: "Home" },
   { href: "/speed-test", icon: Zap, label: "Speed" },
   { href: "/connections", icon: Globe, label: "DNS" },
+  { href: "/tools", icon: Wrench, label: "Tools" },
   { href: "/copilot", icon: MessageSquare, label: "AI" },
 ];
 

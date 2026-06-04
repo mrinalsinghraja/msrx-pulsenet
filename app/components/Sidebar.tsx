@@ -8,12 +8,14 @@ import {
   Globe,
   MessageSquare,
   Activity,
+  Wrench,
 } from "lucide-react";
 
 const NAV = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/speed-test", icon: Zap, label: "Speed Test" },
   { href: "/connections", icon: Globe, label: "Connections" },
+  { href: "/tools", icon: Wrench, label: "Tools" },
   { href: "/copilot", icon: MessageSquare, label: "AI Copilot" },
 ];
 
