@@ -5,22 +5,16 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Zap,
-  History,
   Globe,
-  Brain,
   MessageSquare,
-  Radio,
   Activity,
 } from "lucide-react";
 
 const NAV = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/speed-test", icon: Zap, label: "Speed Test" },
-  { href: "/history", icon: History, label: "History" },
   { href: "/connections", icon: Globe, label: "Connections" },
-  { href: "/insights", icon: Brain, label: "AI Insights" },
   { href: "/copilot", icon: MessageSquare, label: "AI Copilot" },
-  { href: "/uptime", icon: Radio, label: "Uptime" },
 ];
 
 function PulseNetLogo({ size = 28 }: { size?: number }) {
