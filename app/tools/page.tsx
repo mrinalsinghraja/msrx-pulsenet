@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   Globe, RotateCcw, BookOpen, FileCode, ArrowRightLeft,
   Lock, MapPin, Mail, Calculator, Activity, ShieldCheck, Wifi,
-  Loader2, CheckCircle, XCircle, Wrench,
+  Loader2, CheckCircle, XCircle, Wrench, Fingerprint, Network,
 } from "lucide-react";
 
 // ── Subnet calculator (pure client-side) ─────────────────────────────────────
@@ -137,6 +137,28 @@ const TOOLS: Tool[] = [
         ] },
     ],
     buildUrl: (i) => i.host ? `/api/tools/port?host=${encodeURIComponent(i.host)}&port=${i.port || "443"}` : null,
+  },
+  {
+    id: "dns-intel",
+    name: "DNS Intelligence",
+    description: "Full DNS resolve with IP geo, ISP, country, and category",
+    icon: Fingerprint,
+    color: "text-teal-600",
+    bg: "bg-teal-50",
+    border: "border-teal-200",
+    fields: [{ name: "domain", label: "Domain", placeholder: "cloudflare.com" }],
+    buildUrl: (i) => i.domain ? `/api/dns/lookup?domain=${encodeURIComponent(i.domain)}` : null,
+  },
+  {
+    id: "traceroute",
+    name: "Traceroute",
+    description: "Hop-by-hop path with latency and packet loss at each node",
+    icon: Network,
+    color: "text-purple-600",
+    bg: "bg-purple-50",
+    border: "border-purple-200",
+    fields: [{ name: "host", label: "Host", placeholder: "google.com" }],
+    buildUrl: (i) => i.host ? `/api/tools/traceroute?host=${encodeURIComponent(i.host)}` : null,
   },
 ];
 
@@ -463,6 +485,89 @@ function Result({ toolId, data }: { toolId: string; data: any }) {
         </div>
         <div className="ml-auto text-right">
           <p className="text-[24px] font-bold text-[var(--text-primary)]">{data.ms}<span className="text-[13px] font-normal text-[var(--text-secondary)] ml-1">ms</span></p>
+        </div>
+      </div>
+    );
+  }
+
+  if (toolId === "dns-intel") {
+    const catColors: Record<string, string> = {
+      CDN: "bg-blue-100 text-blue-700", Cloud: "bg-violet-100 text-violet-700",
+      Search: "bg-amber-100 text-amber-700", "Social Media": "bg-pink-100 text-pink-700",
+      Streaming: "bg-red-100 text-red-700", Knowledge: "bg-green-100 text-green-700",
+      Unknown: "bg-gray-100 text-gray-600",
+    };
+    return (
+      <div className="space-y-4">
+        <div className={`${card} flex items-center gap-4`}>
+          <span className="text-[42px] leading-none">{data.flag ?? "🌐"}</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-bold text-[16px] text-[var(--text-primary)]">{data.domain}</p>
+              {data.category && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${catColors[data.category] ?? catColors.Unknown}`}>{data.category}</span>
+              )}
+            </div>
+            <p className={`${mono} text-[13px] text-[var(--text-secondary)] mt-0.5`}>{data.ip ?? "—"}</p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-[22px] font-bold text-[var(--text-primary)]">{data.dnsMs != null ? Number(data.dnsMs).toFixed(1) : "—"}</p>
+            <p className="text-[10px] text-[var(--text-tertiary)]">DNS ms</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Kv label="Country" value={data.country} />
+          <Kv label="ISP / Org" value={data.org ? String(data.org).replace(/^AS\d+ /, "") : "—"} />
+        </div>
+      </div>
+    );
+  }
+
+  if (toolId === "traceroute") {
+    const hops: Array<{ hop: number; host: string; loss: number; avg: number; best: number; worst: number; timeout: boolean }> = data.hops ?? [];
+    const maxAvg = Math.max(...hops.filter((h) => !h.timeout).map((h) => h.avg), 1);
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center gap-3 mb-3">
+          <span className={`text-[13px] font-semibold ${data.reachable ? "text-green-600" : "text-red-500"}`}>
+            {data.reachable ? `✓ Reached ${data.host}` : `✗ Could not reach ${data.host}`}
+          </span>
+          {data.totalMs > 0 && <span className="text-[12px] text-[var(--text-tertiary)]">avg {data.totalMs.toFixed(1)}ms</span>}
+          <span className="text-[12px] text-[var(--text-tertiary)] ml-auto">{hops.length} hops</span>
+        </div>
+        <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+          <table className="w-full text-[12px] text-left">
+            <thead className="bg-[var(--surface)] border-b border-[var(--border)]">
+              <tr>
+                {["#", "Host", "Loss", "Avg ms", "Best", "Worst", "Bar"].map((h) => (
+                  <th key={h} className="px-3 py-2 text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-semibold whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border)] bg-white">
+              {hops.map((hop) => {
+                const barPct = hop.timeout ? 100 : Math.round((hop.avg / maxAvg) * 100);
+                const barColor = hop.timeout ? "bg-gray-200" : hop.avg < 20 ? "bg-green-400" : hop.avg < 80 ? "bg-amber-400" : "bg-red-400";
+                return (
+                  <tr key={hop.hop} className={hop.timeout ? "opacity-50" : ""}>
+                    <td className="px-3 py-2 text-[var(--text-tertiary)] font-mono">{hop.hop}</td>
+                    <td className="px-3 py-2 font-mono text-[var(--text-primary)] max-w-[180px] truncate">{hop.host}</td>
+                    <td className="px-3 py-2">
+                      <span className={`text-[11px] font-semibold ${hop.loss > 0 ? "text-red-500" : "text-green-600"}`}>{hop.loss}%</span>
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[var(--text-primary)]">{hop.timeout ? "—" : hop.avg.toFixed(1)}</td>
+                    <td className="px-3 py-2 font-mono text-[var(--text-tertiary)]">{hop.timeout ? "—" : hop.best.toFixed(1)}</td>
+                    <td className="px-3 py-2 font-mono text-[var(--text-tertiary)]">{hop.timeout ? "—" : hop.worst.toFixed(1)}</td>
+                    <td className="px-3 py-2 w-24">
+                      <div className="h-2 rounded-full bg-[var(--surface)] overflow-hidden">
+                        <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${barPct}%` }} />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     );

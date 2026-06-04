@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Zap,
-  Globe,
   MessageSquare,
   Activity,
   Wrench,
@@ -14,7 +13,6 @@ import {
 const NAV = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/speed-test", icon: Zap, label: "Speed Test" },
-  { href: "/connections", icon: Globe, label: "Connections" },
   { href: "/tools", icon: Wrench, label: "Tools" },
   { href: "/copilot", icon: MessageSquare, label: "AI Copilot" },
 ];
