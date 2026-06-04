@@ -8,10 +8,12 @@ type Hop = { hop: number; host: string; loss: number; last: number; avg: number;
 function parseMTR(text: string): Hop[] {
   const hops: Hop[] = [];
   for (const line of text.split("\n")) {
-    const m = line.match(/^\s*(\d+)\.\|--\s+(\S+)\s+([\d.]+)%\s+\d+\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+    // Match loss with or without % (some MTR output omits % on ??? timeout hops)
+    const m = line.match(/^\s*(\d+)\.\|--\s+(\S+)\s+([\d.]+)%?\s+\d+\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
     if (m) {
       const host = m[2];
-      hops.push({ hop: parseInt(m[1]), host, loss: parseFloat(m[3]), last: parseFloat(m[4]), avg: parseFloat(m[5]), best: parseFloat(m[6]), worst: parseFloat(m[7]), stdev: parseFloat(m[8]), timeout: host === "???" || parseFloat(m[3]) >= 100 });
+      const loss = parseFloat(m[3]);
+      hops.push({ hop: parseInt(m[1]), host, loss, last: parseFloat(m[4]), avg: parseFloat(m[5]), best: parseFloat(m[6]), worst: parseFloat(m[7]), stdev: parseFloat(m[8]), timeout: host === "???" || loss >= 100 });
     }
   }
   return hops;
@@ -93,13 +95,15 @@ export async function GET(req: NextRequest) {
     const text = await res.text();
 
     if (text.includes("|--")) {
-      // MTR succeeded
+      // Also parse loss values without % (some MTR versions omit it on timeout hops)
       const hops = parseMTR(text);
       if (hops.length > 0) {
-        return NextResponse.json({ mode: "mtr", host, hops, reachable: hops.at(-1)?.loss === 0, totalMs: hops.at(-1)?.avg ?? 0 });
+        const lastHop = hops.at(-1)!;
+        const reachable = lastHop.loss === 0 && !lastHop.timeout;
+        return NextResponse.json({ mode: "mtr" as const, host, hops, reachable, totalMs: lastHop.avg ?? 0 });
       }
     }
-    // Rate limited or bad response — fall through to analysis
+    // Rate limited, parse failure, or empty response — fall through to analysis
   } catch { /* timeout or network error — fall through */ }
 
   // Fallback: BGP + geo analysis

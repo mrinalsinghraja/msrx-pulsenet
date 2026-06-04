@@ -735,14 +735,18 @@ function Result({ toolId, data }: { toolId: string; data: any }) {
 
   if (toolId === "traceroute") {
     // ── MTR mode (HackerTarget succeeded) ──────────────────────────────────
-    if (data.mode === "mtr" || data.hops) {
+    // NOTE: do NOT use `|| data.hops` here — [] empty array is truthy in JS
+    if (data.mode === "mtr") {
       const hops: Array<{ hop: number; host: string; loss: number; avg: number; best: number; worst: number; timeout: boolean }> = data.hops ?? [];
+      if (hops.length === 0) {
+        return <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-[13px] text-amber-700">No traceroute hops returned — the host may block ICMP probes. Network analysis unavailable for this host. Try a different host.</div>;
+      }
       const maxAvg = Math.max(...hops.filter((h) => !h.timeout).map((h) => h.avg), 1);
       return (
         <div className="space-y-2">
           <div className="flex items-center gap-3 mb-3">
             <span className={`text-[13px] font-semibold ${data.reachable ? "text-green-600" : "text-red-500"}`}>
-              {data.reachable ? `✓ Reached ${data.host}` : `✗ Could not reach ${data.host}`}
+              {data.reachable ? `✓ Reached ${data.host}` : `✗ Destination unreachable — ICMP blocked or host down`}
             </span>
             {data.totalMs > 0 && <span className="text-[12px] text-[var(--text-tertiary)]">avg {data.totalMs.toFixed(1)}ms</span>}
             <span className="text-[12px] text-[var(--text-tertiary)] ml-auto">{hops.length} hops</span>
