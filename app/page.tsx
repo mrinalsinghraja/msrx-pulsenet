@@ -266,7 +266,8 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="overflow-x-auto -mx-1 px-1">
+                  <div className="grid grid-cols-5 gap-2" style={{ minWidth: 300 }}>
                     {[
                       { label: "Download Speed", val: latest.download, unit: "Mbps", icon: Download, cls: "text-cyan-600", bg: "bg-cyan-50", prev: prev?.download, higher: true, rgb: "34,211,238", ctx: "Higher is better. Measured using 25MB Cloudflare CDN blob." },
                       { label: "Upload Speed", val: latest.upload, unit: "Mbps", icon: Upload, cls: "text-violet-600", bg: "bg-violet-50", prev: prev?.upload, higher: true, rgb: "168,85,247", ctx: "Higher is better. Measured via 4 concurrent XHR uploads to Cloudflare." },
@@ -296,6 +297,7 @@ export default function Dashboard() {
                       );
                     })}
                   </div>
+                  </div>
                 </div>
               </div>
 
@@ -303,16 +305,17 @@ export default function Dashboard() {
               {useCases && (
                 <div className="px-5 pb-5 border-t border-[var(--border)] pt-4">
                   <p className={sectionLabel}>Connection Suitability</p>
-                  <div className="grid grid-cols-4 gap-2.5">
+                  {/* 2-col on mobile, 4-col on sm+ */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {useCases.map(({ label, sublabel, icon: Icon, ok, reason }) => (
-                      <div key={label} className={`rounded-xl p-3 border flex flex-col gap-2 ${ok ? "bg-green-50 border-green-100" : "bg-[var(--surface)] border-[var(--border)]"}`}>
+                      <div key={label} className={`rounded-xl p-2.5 border flex flex-col gap-1.5 ${ok ? "bg-green-50 border-green-100" : "bg-[var(--surface)] border-[var(--border)]"}`}>
                         <div className="flex items-center gap-2">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${ok ? "bg-green-100" : "bg-gray-100"}`}>
-                            <Icon size={13} className={ok ? "text-green-600" : "text-[var(--text-tertiary)]"} />
+                          <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${ok ? "bg-green-100" : "bg-gray-100"}`}>
+                            <Icon size={12} className={ok ? "text-green-600" : "text-[var(--text-tertiary)]"} />
                           </div>
                           <div className="min-w-0">
                             <p className={`text-[11px] font-bold leading-tight ${ok ? "text-green-700" : "text-[var(--text-secondary)]"}`}>{label}</p>
-                            <p className="text-[9px] text-[var(--text-tertiary)] leading-tight">{sublabel}</p>
+                            <p className="text-[9px] text-[var(--text-tertiary)] leading-tight truncate">{sublabel}</p>
                           </div>
                         </div>
                         <div className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full w-fit ${ok ? "bg-green-200 text-green-700" : "bg-gray-200 text-gray-500"}`}>
