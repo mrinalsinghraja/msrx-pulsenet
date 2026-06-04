@@ -734,22 +734,24 @@ function Result({ toolId, data }: { toolId: string; data: any }) {
   }
 
   if (toolId === "traceroute") {
-    // ── MTR mode (HackerTarget succeeded) ──────────────────────────────────
+    // ── MTR mode (local traceroute/tracepath/mtr/hackertarget) ─────────────
     // NOTE: do NOT use `|| data.hops` here — [] empty array is truthy in JS
     if (data.mode === "mtr") {
       const hops: Array<{ hop: number; host: string; loss: number; avg: number; best: number; worst: number; timeout: boolean }> = data.hops ?? [];
       if (hops.length === 0) {
-        return <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-[13px] text-amber-700">No traceroute hops returned — the host may block ICMP probes. Network analysis unavailable for this host. Try a different host.</div>;
+        return <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl text-[13px] text-amber-700">No hops returned — host may block TCP/ICMP probes entirely. Try a more accessible host (e.g. google.com).</div>;
       }
       const maxAvg = Math.max(...hops.filter((h) => !h.timeout).map((h) => h.avg), 1);
+      const srcLabel: Record<string, string> = { traceroute: "TCP Traceroute", tracepath: "Tracepath (UDP)", mtr: "MTR Report", hackertarget: "HackerTarget MTR" };
       return (
         <div className="space-y-2">
           <div className="flex items-center gap-3 mb-3">
             <span className={`text-[13px] font-semibold ${data.reachable ? "text-green-600" : "text-red-500"}`}>
-              {data.reachable ? `✓ Reached ${data.host}` : `✗ Destination unreachable — ICMP blocked or host down`}
+              {data.reachable ? `✓ Reached ${data.host}` : `✗ Destination unreachable — probes blocked or host down`}
             </span>
-            {data.totalMs > 0 && <span className="text-[12px] text-[var(--text-tertiary)]">avg {data.totalMs.toFixed(1)}ms</span>}
-            <span className="text-[12px] text-[var(--text-tertiary)] ml-auto">{hops.length} hops</span>
+            {data.totalMs > 0 && <span className="text-[12px] text-[var(--text-tertiary)]">avg {Number(data.totalMs).toFixed(1)}ms</span>}
+            <span className="text-[12px] text-[var(--text-tertiary)]">{hops.length} hops</span>
+            {data.source && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 font-medium">{srcLabel[data.source] ?? data.source}</span>}
           </div>
           <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
             <table className="w-full text-[12px] text-left">
@@ -786,7 +788,7 @@ function Result({ toolId, data }: { toolId: string; data: any }) {
       return (
         <div className="space-y-4">
           <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-[12px] text-amber-700">
-            ⚠ HackerTarget free traceroute API is rate-limited. Showing network intelligence analysis instead.
+            ⚠ All traceroute methods unavailable from Vercel edge (traceroute/tracepath binary access denied). Showing BGP + geolocation intelligence instead.
           </div>
           <div className={`${card} flex items-center gap-4`}>
             <span className="text-[40px] leading-none">{data.flag ?? "🌐"}</span>
