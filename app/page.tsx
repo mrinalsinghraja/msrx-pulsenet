@@ -212,7 +212,7 @@ export default function Dashboard() {
           ) : null}
         </div>
         <div className="flex items-center gap-2 shrink-0 pn-no-print">
-          <DownloadButton targetId="dashboard-report" filename="pulsenet-dashboard" label="Export" />
+          {!loading && <DownloadButton targetId="dashboard-report" filename="pulsenet-dashboard" label="Export" />}
           <button
             onClick={() => fetchData(true)}
             disabled={refreshing}

@@ -19,10 +19,30 @@ export function DownloadButton({ targetId, filename = "pulsenet-report", label =
     setOpen(false);
     try {
       const el = document.getElementById(targetId);
-      if (!el) return;
-      // Scroll element into view so it's fully rendered
-      el.scrollIntoView({ block: "start" });
-      await new Promise((r) => setTimeout(r, 200)); // let layout settle
+      if (!el) {
+        console.error(`DownloadButton: element #${targetId} not found`);
+        setCapturing(false);
+        return;
+      }
+
+      // Scroll element to top of viewport so it renders fully
+      el.scrollIntoView({ block: "start", behavior: "instant" });
+      await new Promise((r) => setTimeout(r, 250));
+
+      const rect = el.getBoundingClientRect();
+
+      // Temporarily set overflow:visible on all descendants so SVG glow filters
+      // (which extend beyond their parent bounds) aren't clipped in the capture
+      const overflowEls: Array<{ node: HTMLElement; orig: string }> = [];
+      el.querySelectorAll<HTMLElement>("*").forEach((node) => {
+        const computed = getComputedStyle(node).overflow;
+        if (computed === "hidden" || computed === "clip") {
+          overflowEls.push({ node, orig: node.style.overflow });
+          node.style.overflow = "visible";
+        }
+      });
+
+      await new Promise((r) => setTimeout(r, 50));
 
       const { default: html2canvas } = await import("html2canvas");
       const canvas = await html2canvas(el, {
@@ -31,22 +51,24 @@ export function DownloadButton({ targetId, filename = "pulsenet-report", label =
         allowTaint: true,
         backgroundColor: "#f5f5f7",
         logging: false,
-        // Capture full scrollable height, not just visible viewport
-        width: el.scrollWidth,
+        width: Math.ceil(rect.width),
         height: el.scrollHeight,
-        windowWidth: Math.max(document.documentElement.scrollWidth, el.scrollWidth),
-        windowHeight: el.scrollHeight,
-        scrollX: 0,
-        scrollY: -window.scrollY,
-        x: 0,
-        y: 0,
+        windowWidth: window.innerWidth,
+        windowHeight: window.innerHeight,
+        // Let html2canvas calculate position from element; no manual offsets
+        ignoreElements: (node) => (node as HTMLElement).classList?.contains("pn-no-print"),
       });
+
+      // Restore overflow values
+      overflowEls.forEach(({ node, orig }) => { node.style.overflow = orig; });
+
       const link = document.createElement("a");
       link.download = `${filename}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
     } catch (e) {
-      console.error("Capture failed:", e);
+      console.error("DownloadButton capture failed:", e);
+      setCapturing(false);
     } finally {
       setCapturing(false);
     }
