@@ -4,8 +4,8 @@ import { useState, useRef } from "react";
 import { Download, Image, Printer, ChevronDown } from "lucide-react";
 
 type DownloadButtonProps = {
-  targetId: string;          // ID of the DOM element to capture
-  filename?: string;         // base filename (no extension)
+  targetId: string;
+  filename?: string;
   label?: string;
 };
 
@@ -20,59 +20,37 @@ export function DownloadButton({ targetId, filename = "pulsenet-report", label =
     try {
       const el = document.getElementById(targetId);
       if (!el) {
-        console.error(`DownloadButton: element #${targetId} not found`);
+        alert("Content not ready — try again after data loads");
         setCapturing(false);
         return;
       }
 
-      // Scroll element to top of viewport so it renders fully
       el.scrollIntoView({ block: "start", behavior: "instant" });
-      await new Promise((r) => setTimeout(r, 250));
+      await new Promise((r) => setTimeout(r, 300));
 
-      const rect = el.getBoundingClientRect();
-
-      // Temporarily set overflow:visible on all descendants so SVG glow filters
-      // (which extend beyond their parent bounds) aren't clipped in the capture
-      const overflowEls: Array<{ node: HTMLElement; orig: string }> = [];
-      el.querySelectorAll<HTMLElement>("*").forEach((node) => {
-        const computed = getComputedStyle(node).overflow;
-        if (computed === "hidden" || computed === "clip") {
-          overflowEls.push({ node, orig: node.style.overflow });
-          node.style.overflow = "visible";
-        }
-      });
-
-      await new Promise((r) => setTimeout(r, 50));
-
-      const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
+      // html-to-image renders via SVG foreignObject — handles Tailwind v4
+      // oklch/lab CSS colors that html2canvas couldn't parse
+      const { toPng } = await import("html-to-image");
+      const dataUrl = await toPng(el, {
+        pixelRatio: 2,
         backgroundColor: "#f5f5f7",
-        logging: false,
-        width: Math.ceil(rect.width),
-        height: el.scrollHeight,
-        windowWidth: window.innerWidth,
-        windowHeight: window.innerHeight,
-        // Let html2canvas calculate position from element; no manual offsets
-        ignoreElements: (node) => (node as HTMLElement).classList?.contains("pn-no-print"),
+        quality: 1,
+        skipFonts: false,
+        filter: (node) => {
+          const el = node as HTMLElement;
+          return !el.classList?.contains?.("pn-no-print");
+        },
       });
 
-      // Restore overflow values
-      overflowEls.forEach(({ node, orig }) => { node.style.overflow = orig; });
-
-      const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.download = `${filename}.png`;
       link.href = dataUrl;
-      // Must append to DOM for Firefox + Safari compatibility
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error("DownloadButton capture failed:", msg);
+      console.error("Export failed:", msg);
       alert(`Export failed: ${msg}`);
     } finally {
       setCapturing(false);
@@ -81,7 +59,6 @@ export function DownloadButton({ targetId, filename = "pulsenet-report", label =
 
   function printPDF() {
     setOpen(false);
-    // Add print class to target element for scoped print styles
     const el = document.getElementById(targetId);
     if (el) el.classList.add("pn-print-target");
     window.print();
