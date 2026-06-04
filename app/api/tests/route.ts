@@ -5,17 +5,26 @@ export async function GET(req: NextRequest) {
   const hours = parseInt(req.nextUrl.searchParams.get("hours") ?? "24");
   const since = new Date(Date.now() - hours * 60 * 60 * 1000);
 
-  const tests = await prisma.testSession.findMany({
-    where: { createdAt: { gte: since } },
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
-
-  return NextResponse.json(tests);
+  try {
+    const tests = await prisma.testSession.findMany({
+      where: { createdAt: { gte: since } },
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    });
+    return NextResponse.json(tests);
+  } catch (e) {
+    console.error("[tests GET] DB error:", e);
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const test = await prisma.testSession.create({ data: body });
-  return NextResponse.json(test, { status: 201 });
+  try {
+    const body = await req.json();
+    const test = await prisma.testSession.create({ data: body });
+    return NextResponse.json(test, { status: 201 });
+  } catch (e) {
+    console.error("[tests POST] DB error:", e);
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
