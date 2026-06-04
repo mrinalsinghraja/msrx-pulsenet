@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Activity,
   Wrench,
+  ExternalLink,
 } from "lucide-react";
 
 const NAV = [
@@ -85,7 +86,7 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-[var(--border)]">
+      <div className="px-3 py-3 border-t border-[var(--border)] space-y-2">
         <div className="flex items-center gap-2">
           <Activity size={12} className="text-green-500" />
           <span className="text-[11px] text-[var(--text-tertiary)]">System Active</span>
@@ -94,9 +95,11 @@ export function Sidebar() {
           href="https://msrx.co.in"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[10px] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] mt-1 block transition-colors"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] font-medium bg-gradient-to-r from-blue-50 to-violet-50 border border-violet-100 text-[#7C3AED] hover:opacity-80 transition-opacity"
         >
-          by MSRX
+          <ExternalLink size={12} />
+          <span>MSRX Portal</span>
+          <span className="ml-auto text-[9px] bg-gradient-to-r from-blue-400 to-violet-500 text-white px-1.5 py-0.5 rounded-full font-bold">HOME</span>
         </a>
       </div>
     </aside>

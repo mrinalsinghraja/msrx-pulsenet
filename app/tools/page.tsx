@@ -5,8 +5,9 @@ import {
   Globe, RotateCcw, BookOpen, FileCode, ArrowRightLeft,
   Lock, MapPin, Mail, Calculator, Activity, ShieldCheck, Wifi,
   Loader2, CheckCircle, XCircle, Wrench, Fingerprint, Network,
-  ShieldAlert, Radio,
+  ShieldAlert, Radio, Info, ChevronDown,
 } from "lucide-react";
+import { DownloadButton } from "@/app/components/DownloadButton";
 
 // ── Subnet calculator (pure client-side) ─────────────────────────────────────
 function calcSubnet(cidr: string) {
@@ -31,6 +32,92 @@ function calcSubnet(cidr: string) {
     prefix,
   };
 }
+
+// ── Tool documentation ────────────────────────────────────────────────────────
+type ToolDoc = { about: string; technical: string; interpret: string };
+
+const TOOL_DOCS: Record<string, ToolDoc> = {
+  dns: {
+    about: "DNS Lookup queries the Domain Name System to retrieve various record types for any domain. DNS is the internet's phonebook — it translates human-readable names like 'google.com' into IP addresses computers understand. Different record types serve different purposes.",
+    technical: "Record types: A = IPv4 address mapping | AAAA = IPv6 address | CNAME = canonical alias (one domain points to another) | NS = authoritative nameservers for the domain | TXT = arbitrary text, commonly SPF email authentication | SOA = Start of Authority, zone metadata + primary nameserver | CAA = Certificate Authority Authorization, controls which CAs can issue SSL certs.",
+    interpret: "Fast DNS response (<50ms) = good. Multiple A records = load balancing or CDN. CNAME chains should be short (1–2 hops). No NS records = misconfigured zone. TXT records with 'v=spf1' = SPF email policy configured.",
+  },
+  reverse: {
+    about: "Reverse DNS resolves an IP address back to a hostname using PTR records. This is the opposite of a normal DNS lookup. It's used to verify that an IP address is legitimately associated with a hostname — critical for email deliverability and network troubleshooting.",
+    technical: "Queries the special 'in-addr.arpa' zone. For IP 8.8.8.8, the PTR lookup queries 8.8.8.8.in-addr.arpa. Reverse DNS is set by the IP block owner (usually your ISP or cloud provider), not the domain registrant.",
+    interpret: "If PTR resolves to a hostname, the IP has valid reverse DNS. No PTR = rDNS not configured (common for residential IPs). Mail servers without rDNS configured are often flagged as spam. Mismatch between forward and reverse DNS can indicate misconfiguration.",
+  },
+  rdap: {
+    about: "WHOIS/RDAP retrieves domain registration data from the official registry. RDAP (Registration Data Access Protocol) is the modern successor to the older WHOIS protocol, providing structured JSON data about domain ownership, registrar, and important dates.",
+    technical: "Queries rdap.org which aggregates all TLD registry APIs. RDAP replaced WHOIS to provide consistent, machine-readable output. Data includes registrar name, registration and expiration dates, nameservers, and domain status codes.",
+    interpret: "Check expiration date to avoid accidental domain loss. 'clientDeleteProhibited' / 'clientTransferProhibited' statuses = domain is locked (good security practice). Nameservers should match your DNS provider. Old registration dates indicate established domains.",
+  },
+  headers: {
+    about: "HTTP Header Inspector fetches the response headers from any URL without downloading the full page body. Headers contain critical metadata about the server, caching policy, content type, security settings, and redirects. They're essential for debugging web issues.",
+    technical: "Sends an HTTP HEAD request (or GET if HEAD fails) to the target URL. Returns status code, all response headers, and response time. Follows redirects automatically and shows the final URL.",
+    interpret: "Status 200 = OK. 301/302 = redirects. 404 = not found. 500 = server error. Check 'server' header to identify software. 'cache-control' shows caching policy. 'strict-transport-security' = HTTPS forced. 'content-security-policy' = XSS protection.",
+  },
+  redirect: {
+    about: "Redirect Tracer follows the complete chain of HTTP redirects from a starting URL to its final destination. Useful for auditing URL shorteners, checking SEO redirect chains, verifying HTTPS upgrades, and diagnosing redirect loops.",
+    technical: "Follows each HTTP redirect manually (301, 302, 303, 307, 308) up to 12 hops. Reports the status code, URL, and response time at each step. Does not execute JavaScript redirects.",
+    interpret: "Ideal chain: HTTP → HTTPS → final URL (2 hops). More hops = slower page load. Redirect loops = error. Mixed HTTP/HTTPS in chain = potential security issue. 302 (temporary) instead of 301 (permanent) = not SEO-optimized.",
+  },
+  ssl: {
+    about: "SSL Certificate Checker uses a direct TLS connection to retrieve the live certificate from any domain. SSL/TLS certificates encrypt traffic between browsers and servers, authenticate the server's identity, and are required for HTTPS.",
+    technical: "Opens a TLS connection on port 443 and inspects the server's certificate. Returns the certificate's Common Name, issuer, validity dates, fingerprint, and Subject Alternative Names (SANs — additional domains the cert covers).",
+    interpret: "Days remaining > 30 = healthy. Under 14 days = urgent renewal needed. Expired = browsers show security warnings. Issuer 'Let's Encrypt' = free auto-renewed cert. Wildcard CN (*.domain.com) = covers all subdomains. Check SANs to see all covered domains.",
+  },
+  ip: {
+    about: "IP Geolocation maps any IP address to its approximate geographic location, ISP, and organization. Useful for understanding CDN routing, diagnosing regional connectivity issues, verifying VPN exit nodes, and network security investigations.",
+    technical: "Queries ipinfo.io which maintains a global IP-to-location database. Leave the field blank to geolocate your own IP. Data includes city, region, country, timezone, ISP/organization name, and ASN (Autonomous System Number).",
+    interpret: "Location accuracy varies — city-level is typically accurate, street-level is not reliable. ASN identifies the network owner (ISP or company). VPNs show the VPN provider's location. Differences between your IP location and your actual location = VPN or proxy in use.",
+  },
+  mx: {
+    about: "MX Record Checker queries mail exchange records for a domain, revealing which mail servers handle email delivery for that domain. Essential for email troubleshooting, migration planning, and verifying mail server configuration.",
+    technical: "Queries DNS MX record type via Google DNS-over-HTTPS. MX records contain a priority number and a mail server hostname. Lower priority number = higher preference. Multiple MX records provide redundancy.",
+    interpret: "Google Workspace uses aspmx.l.google.com. Microsoft 365 uses *.mail.protection.outlook.com. No MX records = domain can't receive email. Multiple records = failover configured (good). All pointing to same server = single point of failure.",
+  },
+  subnet: {
+    about: "Subnet Calculator converts CIDR notation into full network details. Subnetting divides IP address space into logical networks. Understanding subnet boundaries is essential for network design, firewall rules, and cloud VPC configuration.",
+    technical: "Takes CIDR notation (e.g., 192.168.1.0/24) where the number after '/' is the prefix length. Calculates the network address, broadcast address, subnet mask, first/last usable host IPs, and total host count. Pure client-side math — no network requests.",
+    interpret: "/24 = 254 usable hosts (most common). /16 = 65,534 hosts. /32 = single host. /0 = entire internet. Network address (first IP) and broadcast (last IP) are not usable. Hosts must share a subnet to communicate directly without routing.",
+  },
+  ping: {
+    about: "Ping / Reachability checks whether a host is online and measures how long it takes to receive a response. While traditional ICMP ping isn't available in browser-based tools, this performs an HTTP HEAD request which provides equivalent reachability information.",
+    technical: "Sends an HTTP HEAD request to the target host with a 10-second timeout. Returns reachability status, HTTP status code, and round-trip time in milliseconds. Runs from PulseNet's Vercel edge infrastructure (not from your local machine).",
+    interpret: "Under 100ms = excellent. 100–300ms = good. Over 300ms = high latency. Unreachable = firewall blocking, service down, or DNS failure. Note: this measures round-trip from PulseNet servers, not from your machine.",
+  },
+  spf: {
+    about: "Email Auth Check verifies SPF, DMARC, and DKIM records — the three pillars of email authentication. Misconfigured email authentication causes legitimate emails to land in spam and allows domain impersonation for phishing.",
+    technical: "SPF (Sender Policy Framework): TXT record listing authorized mail servers. DMARC (Domain-based Message Authentication): policy for handling SPF/DKIM failures. DKIM (DomainKeys Identified Mail): cryptographic signature in TXT at selector._domainkey.domain. Checks 6 common DKIM selectors.",
+    interpret: "SPF missing = anyone can send email as your domain. DMARC missing = failures not reported/rejected. 'p=reject' in DMARC = strongest protection. 'p=none' = monitoring only. DKIM found = emails signed and verifiable. All three present = well-secured email domain.",
+  },
+  port: {
+    about: "Port Checker tests whether a specific TCP port is open and accepting connections on a remote host. Every service on the internet listens on a port — HTTP on 80, HTTPS on 443, SSH on 22, etc. Port checking reveals which services are exposed.",
+    technical: "Opens a TCP connection to the specified host:port with a 6-second timeout. Returns whether the connection was accepted (open) or rejected/timed out (closed/filtered). Limited to common well-known ports to prevent abuse.",
+    interpret: "Open = service is running and accessible. Closed = port actively refused (service not running). Filtered = firewall blocking (no response). Finding open unexpected ports = potential security issue. SSH (22) open on public internet = brute-force risk.",
+  },
+  "dns-intel": {
+    about: "DNS Intelligence combines a full DNS lookup with IP geolocation, ISP identification, and domain category classification in a single enriched query. It goes beyond raw DNS records to give you the complete picture of where a domain resolves and who owns that infrastructure.",
+    technical: "Performs an A record DNS lookup, then passes the resolved IP to ipinfo.io for geolocation and ASN data. Category detection identifies CDN, Cloud, Search, Social Media, Streaming, or Knowledge domains based on hostname and ISP patterns.",
+    interpret: "Category helps identify infrastructure type (CDN = Cloudflare/Akamai, Cloud = AWS/GCP/Azure). DNS timing shows resolver speed. Country flag shows where the server is physically located. ISP reveals cloud provider or hosting company.",
+  },
+  traceroute: {
+    about: "Traceroute maps the network path between PulseNet servers and your target host, showing each intermediate router (hop) along the way. It reveals routing inefficiencies, identifies where latency is introduced, and diagnoses where connectivity problems occur.",
+    technical: "Uses HackerTarget's MTR API which performs multiple-path traceroute with loss statistics. Each hop shows hostname/IP, packet loss percentage, and average/best/worst round-trip times. Powered by mtr (Matt's Traceroute) from PulseNet's edge infrastructure.",
+    interpret: "Rising latency at a hop = congestion at that router. 100% loss at a hop but traffic continues = router blocks ICMP (normal, not a failure). High loss at final hop = actual packet loss. '???' hops = router not responding to probes. Unexpected geographic hops = suboptimal routing.",
+  },
+  security: {
+    about: "HTTP Security Score audits a website's security-related HTTP response headers and grades its security posture from A to F. These headers are the first line of defense against common web attacks like XSS, clickjacking, and data injection.",
+    technical: "Fetches response headers then scores 6 critical security headers: HSTS (forces HTTPS), CSP (Content Security Policy, prevents XSS), X-Frame-Options (prevents clickjacking), X-Content-Type-Options (prevents MIME sniffing), Referrer-Policy (controls referrer data), Permissions-Policy (limits browser API access).",
+    interpret: "Grade A (90+) = excellent security posture. Grade F = major headers missing, vulnerable to common attacks. HSTS missing = HTTPS not enforced. CSP missing = XSS vulnerable. X-Frame-Options missing = clickjacking possible. Even major sites often score B or C.",
+  },
+  propagation: {
+    about: "DNS Propagation Checker queries 4 major public DNS resolvers worldwide simultaneously to verify whether DNS changes have propagated consistently. After changing DNS records, propagation can take minutes to 48 hours depending on TTL settings.",
+    technical: "Queries Google (8.8.8.8), Cloudflare (1.1.1.1), Quad9 (9.9.9.9), and AdGuard DNS resolvers in parallel via DNS-over-HTTPS. Compares answers across resolvers to detect inconsistencies.",
+    interpret: "All resolvers return same value = fully propagated. Different values = still propagating (old TTL cached on some resolvers). No records from some resolvers = partial failure. Propagation speed depends on old TTL — lower TTL = faster propagation but more DNS load.",
+  },
+};
 
 // ── Tool config ───────────────────────────────────────────────────────────────
 type Field = {
@@ -707,6 +794,7 @@ export default function ToolsPage() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [infoOpen, setInfoOpen] = useState(true); // show doc by default
 
   const tool = TOOLS.find((t) => t.id === activeTool)!;
   const toolInputs = inputs[activeTool] ?? {};
@@ -719,6 +807,7 @@ export default function ToolsPage() {
     setActiveTool(id);
     setResult(null);
     setError("");
+    setInfoOpen(true);
   }
 
   async function handleRun(e: React.FormEvent) {
@@ -792,15 +881,47 @@ export default function ToolsPage() {
       </div>
 
       {/* Active tool panel */}
-      <div className="bg-white rounded-2xl border border-[var(--border)]" style={{ boxShadow: "var(--shadow-card)" }}>
+      <div id="tool-result-panel" className="bg-white rounded-2xl border border-[var(--border)]" style={{ boxShadow: "var(--shadow-card)" }}>
         {/* Tool header */}
         <div className={`px-5 py-4 rounded-t-2xl border-b border-[var(--border)] ${tool.bg} flex items-center gap-3`}>
           {(() => { const Icon = tool.icon; return <Icon size={18} className={tool.color} />; })()}
-          <div>
+          <div className="flex-1 min-w-0">
             <p className={`font-bold text-[15px] ${tool.color}`}>{tool.name}</p>
             <p className="text-[12px] text-[var(--text-secondary)]">{tool.description}</p>
           </div>
+          <div className="flex items-center gap-2 shrink-0 pn-no-print">
+            {result && <DownloadButton targetId="tool-result-panel" filename={`pulsenet-${activeTool}`} label="Export" />}
+          </div>
         </div>
+
+        {/* Tool documentation panel */}
+        {TOOL_DOCS[activeTool] && (
+          <div className="border-b border-[var(--border)]">
+            <button
+              onClick={() => setInfoOpen((v) => !v)}
+              className={`w-full flex items-center gap-2.5 px-5 py-3 text-left hover:bg-[var(--surface)] transition-colors`}
+            >
+              <Info size={13} className="text-blue-500 shrink-0" />
+              <span className="text-[12px] font-semibold text-[var(--text-secondary)] flex-1">About this tool</span>
+              <ChevronDown size={13} className={`text-[var(--text-tertiary)] transition-transform ${infoOpen ? "rotate-180" : ""}`} />
+            </button>
+            {infoOpen && (
+              <div className="px-5 pb-4 space-y-3">
+                <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">{TOOL_DOCS[activeTool].about}</p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="bg-blue-50 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-1.5">⚙ How it works</p>
+                    <p className="text-[12px] text-blue-900 leading-relaxed">{TOOL_DOCS[activeTool].technical}</p>
+                  </div>
+                  <div className="bg-violet-50 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-violet-700 uppercase tracking-wider mb-1.5">📊 Interpreting Results</p>
+                    <p className="text-[12px] text-violet-900 leading-relaxed">{TOOL_DOCS[activeTool].interpret}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Input form */}
         <form onSubmit={handleRun} className="p-5">
@@ -840,7 +961,9 @@ export default function ToolsPage() {
         {/* Results */}
         {(result || error) && (
           <div className="px-5 pb-5 border-t border-[var(--border)] pt-4">
-            <p className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] mb-3">Results</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">Results</p>
+            </div>
             {error ? (
               <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-600">{error}</div>
             ) : (

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Zap, MessageSquare, Wrench } from "lucide-react";
+import { LayoutDashboard, Zap, MessageSquare, Wrench, ExternalLink } from "lucide-react";
 
 const PRIMARY_NAV = [
   { href: "/", icon: LayoutDashboard, label: "Home" },
@@ -41,6 +41,17 @@ export function MobileNav() {
             </Link>
           );
         })}
+        {/* MSRX Portal home link */}
+        <a
+          href="https://msrx.co.in"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors"
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          <ExternalLink size={22} />
+          <span className="text-[9px] font-medium">MSRX</span>
+        </a>
       </div>
     </nav>
   );

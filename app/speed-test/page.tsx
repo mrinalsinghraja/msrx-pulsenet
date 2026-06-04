@@ -5,6 +5,7 @@ import { Zap, MapPin, Globe, Wifi, Server, RefreshCw, Monitor, Gamepad2, Video }
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import { calculateScore, scoreLabel } from "@/lib/score";
 import { MetricExplainer } from "@/app/components/MetricExplainer";
+import { DownloadButton } from "@/app/components/DownloadButton";
 
 type Phase = "idle" | "latency" | "download" | "upload" | "done";
 type MetricInfo = { name: string; value: string | number; unit: string; color: string; context?: string };
@@ -287,17 +288,22 @@ export default function SpeedTestPage() {
 
   return (
     <div className="p-6 max-w-2xl">
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-6 pn-no-print">
         <Zap size={18} className="text-[var(--text-secondary)]" />
         <h1 className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight">Speed Test</h1>
         {ping !== null && (
-          <span className="ml-auto text-[12px] text-[var(--text-tertiary)]">
+          <span className="text-[12px] text-[var(--text-tertiary)]">
             Ping <span className="font-semibold text-[var(--text-primary)]">{ping}ms</span>
           </span>
         )}
+        <div className="ml-auto flex items-center gap-2">
+          {phase === "done" && result && (
+            <DownloadButton targetId="speed-test-results" filename="pulsenet-speed-test" label="Export Results" />
+          )}
+        </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-[var(--border)] overflow-hidden"
+      <div id="speed-test-results" className="bg-white rounded-3xl border border-[var(--border)] overflow-hidden"
         style={{ boxShadow: "0 4px 40px rgba(0,0,0,0.08)" }}>
 
         {/* Phase tabs */}

@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { scoreLabel } from "@/lib/score";
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from "recharts";
+import { MetricExplainer } from "@/app/components/MetricExplainer";
+import { DownloadButton } from "@/app/components/DownloadButton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Test = {
@@ -123,6 +125,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [pings, setPings] = useState<Ping[]>(PING_TARGETS.map((t) => ({ ...t, reachable: false, ms: null, loading: true })));
+  const [explainer, setExplainer] = useState<{ name: string; value: string | number; unit: string; color: string; context?: string } | null>(null);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -208,14 +211,20 @@ export default function Dashboard() {
             <p className="text-[12px] text-red-400 mt-0.5">IP detection failed</p>
           ) : null}
         </div>
-        <button
-          onClick={() => fetchData(true)}
-          disabled={refreshing}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium bg-white border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all shrink-0"
-        >
-          <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} /> Refresh
-        </button>
+        <div className="flex items-center gap-2 shrink-0 pn-no-print">
+          <DownloadButton targetId="dashboard-report" filename="pulsenet-dashboard" label="Export" />
+          <button
+            onClick={() => fetchData(true)}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium bg-white border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
+          >
+            <RefreshCw size={11} className={refreshing ? "animate-spin" : ""} /> Refresh
+          </button>
+        </div>
       </div>
+      {explainer && (
+        <MetricExplainer metric={explainer} onClose={() => setExplainer(null)} />
+      )}
 
       {loading ? (
         <div className="flex items-center gap-2 text-[var(--text-tertiary)] py-8">
@@ -223,7 +232,7 @@ export default function Dashboard() {
           <span className="text-[13px]">Loading dashboard…</span>
         </div>
       ) : (
-        <>
+        <div id="dashboard-report">
           {dbErr && (
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[12px] text-amber-700 flex gap-2">
               <XCircle size={14} className="shrink-0 mt-0.5" />
@@ -259,26 +268,31 @@ export default function Dashboard() {
 
                   <div className="grid grid-cols-5 gap-2">
                     {[
-                      { label: "Download", val: latest.download, unit: "Mbps", icon: Download, cls: "text-cyan-600", bg: "bg-cyan-50", prev: prev?.download, higher: true },
-                      { label: "Upload", val: latest.upload, unit: "Mbps", icon: Upload, cls: "text-violet-600", bg: "bg-violet-50", prev: prev?.upload, higher: true },
-                      { label: "Latency", val: latest.latency, unit: "ms", icon: Timer, cls: latCls(latest.latency), bg: "bg-emerald-50", prev: prev?.latency, higher: false },
-                      { label: "Jitter", val: latest.jitter, unit: "ms", icon: Activity, cls: "text-amber-600", bg: "bg-amber-50", prev: prev?.jitter, higher: false },
-                      { label: "Pkt Loss", val: latest.packetLoss, unit: "%", icon: Wifi, cls: (latest.packetLoss ?? 0) === 0 ? "text-green-600" : "text-red-500", bg: "bg-indigo-50", prev: prev?.packetLoss, higher: false },
-                    ].map(({ label, val, unit, icon: Icon, cls, bg, prev: p, higher }) => {
+                      { label: "Download Speed", val: latest.download, unit: "Mbps", icon: Download, cls: "text-cyan-600", bg: "bg-cyan-50", prev: prev?.download, higher: true, rgb: "34,211,238", ctx: "Higher is better. Measured using 25MB Cloudflare CDN blob." },
+                      { label: "Upload Speed", val: latest.upload, unit: "Mbps", icon: Upload, cls: "text-violet-600", bg: "bg-violet-50", prev: prev?.upload, higher: true, rgb: "168,85,247", ctx: "Higher is better. Measured via 4 concurrent XHR uploads to Cloudflare." },
+                      { label: "Latency", val: latest.latency, unit: "ms", icon: Timer, cls: latCls(latest.latency), bg: "bg-emerald-50", prev: prev?.latency, higher: false, rgb: "16,185,129", ctx: "Round-trip time to Cloudflare. Lower is better. Under 30ms is excellent." },
+                      { label: "Jitter", val: latest.jitter, unit: "ms", icon: Activity, cls: "text-amber-600", bg: "bg-amber-50", prev: prev?.jitter, higher: false, rgb: "245,158,11", ctx: "Variance in latency between packets. Under 5ms is excellent for gaming and calls." },
+                      { label: "Packet Loss", val: latest.packetLoss, unit: "%", icon: Wifi, cls: (latest.packetLoss ?? 0) === 0 ? "text-green-600" : "text-red-500", bg: "bg-indigo-50", prev: prev?.packetLoss, higher: false, rgb: "99,102,241", ctx: "Percentage of packets lost in transit. 0% is ideal. Above 1% causes noticeable issues." },
+                    ].map(({ label, val, unit, icon: Icon, cls, bg, prev: p, higher, rgb, ctx }) => {
                       const diff = val != null && p != null ? val - p : null;
                       const good = diff != null ? (higher ? diff > 0 : diff < 0) : null;
                       return (
-                        <div key={label} className={`${bg} rounded-xl p-2.5 flex flex-col items-center gap-1`}>
+                        <button
+                          key={label}
+                          onClick={() => val != null && setExplainer({ name: label, value: fmt(val), unit, color: rgb, context: ctx })}
+                          className={`${bg} rounded-xl p-2.5 flex flex-col items-center gap-1 cursor-pointer hover:brightness-95 transition-all active:scale-95 text-left w-full`}
+                          title="Click for AI analysis"
+                        >
                           <Icon size={12} className={cls} />
                           <p className={`text-[20px] font-black leading-none ${cls}`}>{fmt(val)}</p>
                           <p className="text-[9px] text-[var(--text-tertiary)] font-medium">{unit}</p>
-                          <p className="text-[9px] text-[var(--text-tertiary)] font-semibold uppercase tracking-wide leading-tight text-center">{label}</p>
+                          <p className="text-[9px] text-[var(--text-tertiary)] font-semibold uppercase tracking-wide leading-tight text-center">{label.split(" ")[0]}</p>
                           {good != null && (
                             <span className={`text-[8px] font-bold flex items-center gap-0.5 ${good ? "text-green-500" : "text-red-400"}`}>
                               {good ? <TrendingUp size={8} /> : <TrendingDown size={8} />}{Math.abs(diff!).toFixed(1)}
                             </span>
                           )}
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -428,7 +442,7 @@ export default function Dashboard() {
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
