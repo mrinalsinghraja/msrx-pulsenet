@@ -49,7 +49,8 @@ export function MobileNav() {
           className="flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-colors"
           style={{ color: "var(--text-tertiary)" }}
         >
-          <ExternalLink size={22} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/msrx-logo.svg" width={22} height={22} alt="MSRX" className="opacity-60" />
           <span className="text-[9px] font-medium">MSRX</span>
         </a>
       </div>

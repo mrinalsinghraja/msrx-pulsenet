@@ -18,23 +18,10 @@ const NAV = [
   { href: "/copilot", icon: MessageSquare, label: "AI Copilot" },
 ];
 
-function PulseNetLogo({ size = 28 }: { size?: number }) {
+function PulseNetLogo({ size = 36 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" fill="none">
-      <defs>
-        <linearGradient id="sb-pn" x1="20" y1="10" x2="80" y2="90" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#60A5FA" />
-          <stop offset="100%" stopColor="#A78BFA" />
-        </linearGradient>
-      </defs>
-      <path d="M 88 62 A 40 40 0 1 1 88 38" stroke="url(#sb-pn)" strokeWidth="5" strokeLinecap="round" fill="none" />
-      <circle cx="88" cy="38" r="5.5" fill="url(#sb-pn)" />
-      <path d="M 40 62 A 10 10 0 0 0 60 62" stroke="url(#sb-pn)" strokeWidth="5.5" strokeLinecap="round" />
-      <path d="M 32 62 A 18 18 0 0 0 68 62" stroke="url(#sb-pn)" strokeWidth="4.5" strokeLinecap="round" />
-      <path d="M 24 62 A 26 26 0 0 0 76 62" stroke="url(#sb-pn)" strokeWidth="4" strokeLinecap="round" />
-      <circle cx="50" cy="62" r="5" fill="url(#sb-pn)" />
-      <path d="M 50 67 L 50 78" stroke="url(#sb-pn)" strokeWidth="5" strokeLinecap="round" />
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/msrx-logo.svg" width={size} height={size} alt="MSRX PulseNet" style={{ display: "block" }} />
   );
 }
 
@@ -44,8 +31,8 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex w-56 shrink-0 bg-white border-r border-[var(--border)] flex-col h-screen sticky top-0">
       {/* Logo */}
-      <div className="px-4 h-14 flex items-center gap-2.5 border-b border-[var(--border)]">
-        <PulseNetLogo size={26} />
+      <div className="px-4 h-16 flex items-center gap-2.5 border-b border-[var(--border)]">
+        <PulseNetLogo size={38} />
         <div>
           <p className="font-semibold text-[15px] tracking-tight text-[var(--text-primary)] leading-tight">
             PulseNet

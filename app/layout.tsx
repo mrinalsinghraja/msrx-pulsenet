@@ -30,6 +30,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="relative flex-1 overflow-y-auto pb-16 md:pb-0" style={{ zIndex: 1 }}>
           {children}
         </div>
+        {/* MSRX signature — fixed bottom-right on every page */}
+        <a
+          href="https://msrx.co.in"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-20 right-4 md:bottom-5 md:right-5 z-20 pn-no-print flex items-center gap-1.5 opacity-40 hover:opacity-80 transition-opacity"
+          title="MSRX"
+          style={{ zIndex: 20 }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/msrx-logo.svg" width={22} height={22} alt="MSRX" />
+          <span style={{ fontFamily: "var(--font-inter), sans-serif", fontSize: "10px", fontWeight: 600, letterSpacing: "0.12em", color: "#6e6e73" }}>MSRX</span>
+        </a>
       </body>
     </html>
   );
