@@ -963,6 +963,11 @@ export default function ToolsPage() {
           <div className="px-5 pb-5 border-t border-[var(--border)] pt-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">Results</p>
+              {result && (
+                <div className="pn-no-print">
+                  <DownloadButton targetId="tool-result-panel" filename={`pulsenet-${activeTool}`} label="Export Results" />
+                </div>
+              )}
             </div>
             {error ? (
               <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-600">{error}</div>

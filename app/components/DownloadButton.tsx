@@ -62,13 +62,18 @@ export function DownloadButton({ targetId, filename = "pulsenet-report", label =
       // Restore overflow values
       overflowEls.forEach(({ node, orig }) => { node.style.overflow = orig; });
 
+      const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.download = `${filename}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.href = dataUrl;
+      // Must append to DOM for Firefox + Safari compatibility
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     } catch (e) {
-      console.error("DownloadButton capture failed:", e);
-      setCapturing(false);
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("DownloadButton capture failed:", msg);
+      alert(`Export failed: ${msg}`);
     } finally {
       setCapturing(false);
     }
