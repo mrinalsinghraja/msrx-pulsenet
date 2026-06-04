@@ -5,6 +5,7 @@ import {
   Globe, RotateCcw, BookOpen, FileCode, ArrowRightLeft,
   Lock, MapPin, Mail, Calculator, Activity, ShieldCheck, Wifi,
   Loader2, CheckCircle, XCircle, Wrench, Fingerprint, Network,
+  ShieldAlert, Radio,
 } from "lucide-react";
 
 // ── Subnet calculator (pure client-side) ─────────────────────────────────────
@@ -159,6 +160,32 @@ const TOOLS: Tool[] = [
     border: "border-purple-200",
     fields: [{ name: "host", label: "Host", placeholder: "google.com" }],
     buildUrl: (i) => i.host ? `/api/tools/traceroute?host=${encodeURIComponent(i.host)}` : null,
+  },
+  {
+    id: "security",
+    name: "HTTP Security Score",
+    description: "Grade security headers: HSTS, CSP, X-Frame-Options, and more",
+    icon: ShieldAlert,
+    color: "text-red-600",
+    bg: "bg-red-50",
+    border: "border-red-200",
+    fields: [{ name: "url", label: "URL", placeholder: "https://example.com" }],
+    buildUrl: (i) => i.url ? `/api/tools/headers?url=${encodeURIComponent(i.url)}` : null,
+  },
+  {
+    id: "propagation",
+    name: "DNS Propagation",
+    description: "Check if DNS changes have propagated across global resolvers",
+    icon: Radio,
+    color: "text-fuchsia-600",
+    bg: "bg-fuchsia-50",
+    border: "border-fuchsia-200",
+    fields: [
+      { name: "domain", label: "Domain", placeholder: "example.com" },
+      { name: "type", label: "Type", placeholder: "A", type: "select",
+        options: ["A", "AAAA", "CNAME", "MX", "TXT", "NS"].map((v) => ({ value: v, label: v })) },
+    ],
+    buildUrl: (i) => i.domain ? `/api/tools/dns-propagation?domain=${encodeURIComponent(i.domain)}&type=${i.type || "A"}` : null,
   },
 ];
 
@@ -490,6 +517,102 @@ function Result({ toolId, data }: { toolId: string; data: any }) {
     );
   }
 
+  if (toolId === "security") {
+    const headers = data.headers as Record<string, string>;
+    const checks = [
+      { key: "strict-transport-security", label: "HSTS", pts: 20, tip: "Force HTTPS for all connections" },
+      { key: "content-security-policy", label: "Content Security Policy", pts: 25, tip: "Prevent XSS and injection attacks" },
+      { key: "x-frame-options", label: "X-Frame-Options", pts: 15, tip: "Block clickjacking via iframes" },
+      { key: "x-content-type-options", label: "X-Content-Type-Options", pts: 10, tip: "Prevent MIME-type sniffing" },
+      { key: "referrer-policy", label: "Referrer-Policy", pts: 15, tip: "Control referrer info on links" },
+      { key: "permissions-policy", label: "Permissions-Policy", pts: 15, tip: "Control browser feature access" },
+    ];
+    const score = checks.reduce((s, c) => s + (headers[c.key] ? c.pts : 0), 0);
+    const grade = score >= 90 ? "A" : score >= 75 ? "B" : score >= 55 ? "C" : score >= 35 ? "D" : "F";
+    const gradeColor = { A: "text-green-700 bg-green-50 border-green-200", B: "text-green-600 bg-green-50 border-green-100", C: "text-amber-700 bg-amber-50 border-amber-200", D: "text-orange-700 bg-orange-50 border-orange-200", F: "text-red-700 bg-red-50 border-red-200" }[grade]!;
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <div className={`w-16 h-16 rounded-2xl border-2 flex items-center justify-center text-[28px] font-black ${gradeColor}`}>{grade}</div>
+          <div>
+            <p className="text-[18px] font-bold text-[var(--text-primary)]">{score}/100</p>
+            <p className="text-[12px] text-[var(--text-secondary)]">{data.url} · {data.status}</p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {checks.map((c) => {
+            const present = !!headers[c.key];
+            return (
+              <div key={c.key} className={`${card} flex items-start gap-3`}>
+                {present ? <CheckCircle size={15} className="text-green-500 mt-0.5 shrink-0" /> : <XCircle size={15} className="text-red-400 mt-0.5 shrink-0" />}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[13px] font-semibold text-[var(--text-primary)]">{c.label}</p>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${present ? "bg-green-100 text-green-700" : "bg-red-100 text-red-500"}`}>+{c.pts}pts</span>
+                  </div>
+                  <p className="text-[11px] text-[var(--text-tertiary)]">{c.tip}</p>
+                  {present && <p className={`${mono} text-[11px] text-[var(--text-secondary)] mt-0.5 truncate`}>{headers[c.key]}</p>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (toolId === "propagation") {
+    const resolvers: Array<{ name: string; flag: string; ms: number; answers: Array<{value: string; ttl: number}>; status: number; error: string | null }> = data.resolvers ?? [];
+    const allAnswers = resolvers.flatMap((r) => r.answers.map((a) => a.value));
+    const uniqueAnswers = [...new Set(allAnswers)];
+    return (
+      <div className="space-y-4">
+        <div className={`p-4 rounded-xl border flex items-center gap-3 ${data.propagated && data.consistent ? "bg-green-50 border-green-100" : data.consistent ? "bg-amber-50 border-amber-100" : "bg-red-50 border-red-100"}`}>
+          {data.propagated && data.consistent ? <CheckCircle size={18} className="text-green-600 shrink-0" /> : <XCircle size={18} className="text-amber-600 shrink-0" />}
+          <div>
+            <p className="font-semibold text-[14px] text-[var(--text-primary)]">
+              {data.propagated && data.consistent ? "Fully propagated — all resolvers agree" : data.consistent ? "Inconsistent — resolvers return different answers" : "Some resolvers returned no records"}
+            </p>
+            <p className="text-[12px] text-[var(--text-secondary)]">{uniqueAnswers.length} unique value{uniqueAnswers.length !== 1 ? "s" : ""} across {resolvers.length} resolvers</p>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {resolvers.map((r) => (
+            <div key={r.name} className={`${card} flex items-start gap-3`}>
+              <span className="text-[18px] leading-none mt-0.5">{r.flag}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-[13px] text-[var(--text-primary)]">{r.name}</p>
+                  <span className="text-[11px] text-[var(--text-tertiary)]">{r.ms}ms</span>
+                  {r.error && <span className="text-[10px] text-red-500 font-medium">timeout</span>}
+                </div>
+                {r.answers.length > 0 ? (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {r.answers.map((a, i) => (
+                      <span key={i} className={`${mono} text-[11px] px-2 py-0.5 rounded-full ${uniqueAnswers.length > 1 ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>{a.value}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-[var(--text-tertiary)] mt-0.5">No records returned</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        {uniqueAnswers.length > 0 && (
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] mb-2">All Resolved Values</p>
+            <div className="flex flex-wrap gap-2">
+              {uniqueAnswers.map((v) => (
+                <span key={v} className={`${mono} text-[12px] px-3 py-1 rounded-full border ${data.propagated ? "bg-green-50 border-green-200 text-green-800" : "bg-amber-50 border-amber-200 text-amber-800"}`}>{v}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (toolId === "dns-intel") {
     const catColors: Record<string, string> = {
       CDN: "bg-blue-100 text-blue-700", Cloud: "bg-violet-100 text-violet-700",
@@ -638,7 +761,7 @@ export default function ToolsPage() {
         <div className="flex items-center gap-2 mb-1">
           <Wrench size={18} className="text-[var(--text-secondary)]" />
           <h1 className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight">Network Tools</h1>
-          <span className="ml-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gradient-to-r from-blue-400 to-violet-500 text-white">12 tools</span>
+          <span className="ml-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gradient-to-r from-blue-400 to-violet-500 text-white">{TOOLS.length} tools</span>
         </div>
         <p className="text-[13px] text-[var(--text-secondary)]">Professional diagnostics — DNS, WHOIS, SSL, headers, routing, and more</p>
       </div>

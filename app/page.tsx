@@ -17,7 +17,7 @@ type TestSession = {
   isp: string | null;
 };
 
-type IpInfo = { ip: string; isp: string; city: string; country: string; flag: string; org: string; timezone: string };
+type IpInfo = { ip: string; isp: string; city: string; region: string; country: string; timezone: string };
 
 type PingResult = { name: string; host: string; reachable: boolean; ms: number | null; loading: boolean };
 
@@ -87,7 +87,7 @@ export default function Dashboard() {
   useEffect(() => {
     Promise.all([
       fetch("/api/tests?hours=24").then((r) => r.json()),
-      fetch("/api/tools/ip-lookup").then((r) => r.json()),
+      fetch("/api/ip-info").then((r) => r.json()),
     ]).then(([t, ip]) => {
       setTests(Array.isArray(t) ? t : []);
       setIpInfo(ip);
@@ -148,7 +148,6 @@ export default function Dashboard() {
               </div>
               {ipInfo ? (
                 <div className="flex items-start gap-4">
-                  <span className="text-[36px] leading-none mt-0.5">{ipInfo.flag ?? "🌐"}</span>
                   <div className="flex-1 min-w-0 space-y-2">
                     <div>
                       <p className="text-[10px] text-[var(--text-tertiary)]">IP Address</p>
@@ -158,7 +157,7 @@ export default function Dashboard() {
                       <div>
                         <p className="text-[10px] text-[var(--text-tertiary)]">ISP</p>
                         <p className="text-[12px] font-medium text-[var(--text-primary)] truncate">
-                          {ipInfo.org?.replace(/^AS\d+ /, "") || ipInfo.isp || "—"}
+                          {ipInfo.isp?.replace(/^AS\d+ /, "") || "—"}
                         </p>
                       </div>
                       <div>
