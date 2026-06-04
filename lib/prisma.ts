@@ -1,24 +1,26 @@
 import { PrismaClient } from "@prisma/client";
+// Static imports — dynamic require() breaks Vercel's bundler
+import { PrismaLibSQL } from "@prisma/adapter-libsql";
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+declare global {
+  // eslint-disable-next-line no-var
+  var _prisma: PrismaClient | undefined;
+}
 
 function createPrismaClient(): PrismaClient {
-  // Production (Vercel): use Turso/LibSQL
-  if (process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN) {
-    const { createClient } = require("@libsql/client");
-    // PrismaLibSQL is the correct export name in @prisma/adapter-libsql v6
-    const { PrismaLibSQL } = require("@prisma/adapter-libsql");
-    const libsql = createClient({
-      url: process.env.TURSO_DATABASE_URL,
-      authToken: process.env.TURSO_AUTH_TOKEN,
-    });
-    const adapter = new PrismaLibSQL(libsql);
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
+  const tursoToken = process.env.TURSO_AUTH_TOKEN;
+
+  if (tursoUrl && tursoToken && tursoUrl !== "undefined" && tursoToken !== "undefined") {
+    // PrismaLibSQL v6 takes config object directly (not a pre-created client)
+    const adapter = new PrismaLibSQL({ url: tursoUrl, authToken: tursoToken });
     return new PrismaClient({ adapter } as unknown as ConstructorParameters<typeof PrismaClient>[0]);
   }
-  // Local dev: use SQLite via DATABASE_URL
+
+  // Local dev: SQLite via DATABASE_URL
   return new PrismaClient();
 }
 
-export const prisma = globalForPrisma.prisma || createPrismaClient();
+export const prisma = global._prisma ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+if (process.env.NODE_ENV !== "production") global._prisma = prisma;
