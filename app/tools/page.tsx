@@ -734,53 +734,81 @@ function Result({ toolId, data }: { toolId: string; data: any }) {
   }
 
   if (toolId === "traceroute") {
-    const hops: Array<{ hop: number; host: string; loss: number; avg: number; best: number; worst: number; timeout: boolean }> = data.hops ?? [];
-    const maxAvg = Math.max(...hops.filter((h) => !h.timeout).map((h) => h.avg), 1);
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center gap-3 mb-3">
-          <span className={`text-[13px] font-semibold ${data.reachable ? "text-green-600" : "text-red-500"}`}>
-            {data.reachable ? `✓ Reached ${data.host}` : `✗ Could not reach ${data.host}`}
-          </span>
-          {data.totalMs > 0 && <span className="text-[12px] text-[var(--text-tertiary)]">avg {data.totalMs.toFixed(1)}ms</span>}
-          <span className="text-[12px] text-[var(--text-tertiary)] ml-auto">{hops.length} hops</span>
-        </div>
-        <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
-          <table className="w-full text-[12px] text-left">
-            <thead className="bg-[var(--surface)] border-b border-[var(--border)]">
-              <tr>
-                {["#", "Host", "Loss", "Avg ms", "Best", "Worst", "Bar"].map((h) => (
+    // ── MTR mode (HackerTarget succeeded) ──────────────────────────────────
+    if (data.mode === "mtr" || data.hops) {
+      const hops: Array<{ hop: number; host: string; loss: number; avg: number; best: number; worst: number; timeout: boolean }> = data.hops ?? [];
+      const maxAvg = Math.max(...hops.filter((h) => !h.timeout).map((h) => h.avg), 1);
+      return (
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 mb-3">
+            <span className={`text-[13px] font-semibold ${data.reachable ? "text-green-600" : "text-red-500"}`}>
+              {data.reachable ? `✓ Reached ${data.host}` : `✗ Could not reach ${data.host}`}
+            </span>
+            {data.totalMs > 0 && <span className="text-[12px] text-[var(--text-tertiary)]">avg {data.totalMs.toFixed(1)}ms</span>}
+            <span className="text-[12px] text-[var(--text-tertiary)] ml-auto">{hops.length} hops</span>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-[var(--border)]">
+            <table className="w-full text-[12px] text-left">
+              <thead className="bg-[var(--surface)] border-b border-[var(--border)]">
+                <tr>{["#", "Host", "Loss", "Avg ms", "Best", "Worst", "Bar"].map((h) => (
                   <th key={h} className="px-3 py-2 text-[10px] uppercase tracking-wider text-[var(--text-tertiary)] font-semibold whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border)] bg-white">
-              {hops.map((hop) => {
-                const barPct = hop.timeout ? 100 : Math.round((hop.avg / maxAvg) * 100);
-                const barColor = hop.timeout ? "bg-gray-200" : hop.avg < 20 ? "bg-green-400" : hop.avg < 80 ? "bg-amber-400" : "bg-red-400";
-                return (
-                  <tr key={hop.hop} className={hop.timeout ? "opacity-50" : ""}>
-                    <td className="px-3 py-2 text-[var(--text-tertiary)] font-mono">{hop.hop}</td>
-                    <td className="px-3 py-2 font-mono text-[var(--text-primary)] max-w-[180px] truncate">{hop.host}</td>
-                    <td className="px-3 py-2">
-                      <span className={`text-[11px] font-semibold ${hop.loss > 0 ? "text-red-500" : "text-green-600"}`}>{hop.loss}%</span>
-                    </td>
-                    <td className="px-3 py-2 font-mono text-[var(--text-primary)]">{hop.timeout ? "—" : hop.avg.toFixed(1)}</td>
-                    <td className="px-3 py-2 font-mono text-[var(--text-tertiary)]">{hop.timeout ? "—" : hop.best.toFixed(1)}</td>
-                    <td className="px-3 py-2 font-mono text-[var(--text-tertiary)]">{hop.timeout ? "—" : hop.worst.toFixed(1)}</td>
-                    <td className="px-3 py-2 w-24">
-                      <div className="h-2 rounded-full bg-[var(--surface)] overflow-hidden">
-                        <div className={`h-full rounded-full ${barColor} transition-all`} style={{ width: `${barPct}%` }} />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ))}</tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)] bg-white">
+                {hops.map((hop) => {
+                  const barPct = hop.timeout ? 100 : Math.round((hop.avg / maxAvg) * 100);
+                  const barColor = hop.timeout ? "bg-gray-200" : hop.avg < 20 ? "bg-green-400" : hop.avg < 80 ? "bg-amber-400" : "bg-red-400";
+                  return (
+                    <tr key={hop.hop} className={hop.timeout ? "opacity-50" : ""}>
+                      <td className="px-3 py-2 text-[var(--text-tertiary)] font-mono">{hop.hop}</td>
+                      <td className="px-3 py-2 font-mono text-[var(--text-primary)] max-w-[180px] truncate">{hop.host}</td>
+                      <td className="px-3 py-2"><span className={`text-[11px] font-semibold ${hop.loss > 0 ? "text-red-500" : "text-green-600"}`}>{hop.loss}%</span></td>
+                      <td className="px-3 py-2 font-mono text-[var(--text-primary)]">{hop.timeout ? "—" : hop.avg.toFixed(1)}</td>
+                      <td className="px-3 py-2 font-mono text-[var(--text-tertiary)]">{hop.timeout ? "—" : hop.best.toFixed(1)}</td>
+                      <td className="px-3 py-2 font-mono text-[var(--text-tertiary)]">{hop.timeout ? "—" : hop.worst.toFixed(1)}</td>
+                      <td className="px-3 py-2 w-24"><div className="h-2 rounded-full bg-[var(--surface)] overflow-hidden"><div className={`h-full rounded-full ${barColor}`} style={{ width: `${barPct}%` }} /></div></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
+
+    // ── Analysis mode (HackerTarget rate-limited — BGP + geo fallback) ─────
+    if (data.mode === "analysis") {
+      return (
+        <div className="space-y-4">
+          <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-[12px] text-amber-700">
+            ⚠ HackerTarget free traceroute API is rate-limited. Showing network intelligence analysis instead.
+          </div>
+          <div className={`${card} flex items-center gap-4`}>
+            <span className="text-[40px] leading-none">{data.flag ?? "🌐"}</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-[16px] text-[var(--text-primary)]">{data.host}</p>
+              <p className={`${mono} text-[13px] text-[var(--text-secondary)]`}>{data.ip}</p>
+              <p className="text-[12px] text-[var(--text-tertiary)]">{[data.city, data.region, data.country].filter(Boolean).join(", ")}</p>
+            </div>
+            {data.latencyMs != null && (
+              <div className="text-right">
+                <p className="text-[22px] font-bold text-[var(--text-primary)]">{data.latencyMs}</p>
+                <p className="text-[10px] text-[var(--text-tertiary)]">ms ping</p>
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Kv label="Hostname" value={data.hostname ?? "—"} />
+            <Kv label="ISP / Org" value={data.org?.replace(/^AS\d+ /, "") ?? "—"} />
+            {data.bgpAsn && <Kv label="BGP ASN" value={`AS${data.bgpAsn} — ${data.bgpAsnName ?? ""}`} />}
+            {data.bgpPrefix && <Kv label="BGP Prefix" value={data.bgpPrefix} />}
+            <Kv label="Timezone" value={data.timezone ?? "—"} />
+            {data.loc && <Kv label="Coordinates" value={data.loc} />}
+          </div>
+        </div>
+      );
+    }
   }
 
   return <pre className="text-[11px] text-[var(--text-secondary)] whitespace-pre-wrap break-all">{JSON.stringify(data, null, 2)}</pre>;
