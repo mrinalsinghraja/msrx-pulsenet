@@ -20,12 +20,26 @@ export function DownloadButton({ targetId, filename = "pulsenet-report", label =
     try {
       const el = document.getElementById(targetId);
       if (!el) return;
+      // Scroll element into view so it's fully rendered
+      el.scrollIntoView({ block: "start" });
+      await new Promise((r) => setTimeout(r, 200)); // let layout settle
+
       const { default: html2canvas } = await import("html2canvas");
       const canvas = await html2canvas(el, {
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: "#f5f5f7",
         logging: false,
+        // Capture full scrollable height, not just visible viewport
+        width: el.scrollWidth,
+        height: el.scrollHeight,
+        windowWidth: Math.max(document.documentElement.scrollWidth, el.scrollWidth),
+        windowHeight: el.scrollHeight,
+        scrollX: 0,
+        scrollY: -window.scrollY,
+        x: 0,
+        y: 0,
       });
       const link = document.createElement("a");
       link.download = `${filename}.png`;

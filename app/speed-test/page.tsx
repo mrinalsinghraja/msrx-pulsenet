@@ -303,7 +303,8 @@ export default function SpeedTestPage() {
         </div>
       </div>
 
-      <div id="speed-test-results" className="bg-white rounded-3xl border border-[var(--border)] overflow-hidden"
+      <div id="speed-test-results">
+      <div className="bg-white rounded-3xl border border-[var(--border)] overflow-hidden"
         style={{ boxShadow: "0 4px 40px rgba(0,0,0,0.08)" }}>
 
         {/* Phase tabs */}
@@ -519,6 +520,8 @@ export default function SpeedTestPage() {
           </div>
         </div>
       )}
+
+      </div> {/* close id="speed-test-results" */}
 
       {activeMetric && (
         <MetricExplainer metric={activeMetric} onClose={() => setActiveMetric(null)} />
