@@ -135,23 +135,33 @@ export default function CopilotPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-6 py-4 border-b border-[var(--border)] bg-white flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <PulseNetLogo size={22} />
+      <div className="px-6 py-3.5 border-b border-[var(--border)] flex items-center justify-between"
+        style={{ background: "linear-gradient(90deg, rgba(30,27,75,0.97) 0%, rgba(49,46,129,0.97) 100%)" }}>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}>
+            <PulseNetLogo size={20} />
+          </div>
           <div>
-            <p className="font-semibold text-[15px] text-[var(--text-primary)]">PulseNet AI Copilot</p>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[11px] text-[var(--text-tertiary)]">
-                {context ? "Network data loaded" : "Waiting for test data"}
+            <div className="flex items-center gap-2">
+              <p className="font-bold text-[14px] text-white leading-tight">PulseNet AI Copilot</p>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white"
+                style={{ background: "rgba(139,92,246,0.4)", border: "1px solid rgba(139,92,246,0.5)" }}>
+                Groq · Llama 3.3
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse bg-emerald-400" />
+              <span className="text-[10px]" style={{ color: "rgba(200,220,255,0.7)" }}>
+                {context ? "Network context loaded · Ready to analyse" : "Waiting for speed test data"}
               </span>
             </div>
           </div>
         </div>
         {context && (
-          <div className="text-[11px] text-[var(--text-tertiary)] text-right">
-            <p>{context.download?.toFixed(1)}↓ {context.upload?.toFixed(1)}↑ Mbps</p>
-            <p>Latency {context.latency?.toFixed(0)}ms · Score {context.score}/100</p>
+          <div className="text-right">
+            <p className="text-[11px] font-semibold text-white">{context.download?.toFixed(1)}↓ {context.upload?.toFixed(1)}↑ Mbps</p>
+            <p className="text-[10px]" style={{ color: "rgba(200,220,255,0.6)" }}>Latency {context.latency?.toFixed(0)}ms · Score {context.score}/100</p>
           </div>
         )}
       </div>
@@ -159,20 +169,52 @@ export default function CopilotPage() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center py-10">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-50 to-violet-50 border border-violet-100 flex items-center justify-center mb-4">
-              <PulseNetLogo size={32} />
+          <div className="flex flex-col items-center py-8 px-2">
+            {/* Glowing AI avatar */}
+            <div className="relative mb-5">
+              <div style={{ position: "absolute", inset: -24, background: "radial-gradient(ellipse, rgba(139,92,246,0.18) 0%, transparent 70%)", filter: "blur(16px)", borderRadius: "50%" }} />
+              <div className="relative w-20 h-20 rounded-3xl flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #4c1d95 100%)", boxShadow: "0 16px 48px rgba(139,92,246,0.4), 0 0 0 1px rgba(139,92,246,0.25), inset 0 1px 0 rgba(255,255,255,0.12)" }}>
+                <PulseNetLogo size={42} />
+              </div>
             </div>
-            <p className="text-[16px] font-semibold text-[var(--text-primary)] mb-1">Ask me anything about your network</p>
-            <p className="text-[13px] text-[var(--text-secondary)] mb-6 text-center max-w-xs">
-              I can explain metrics, diagnose issues, and suggest optimizations.
-            </p>
+
+            {/* Bold headline */}
+            <h2 className="text-[22px] font-black text-[var(--text-primary)] text-center mb-1.5 leading-tight tracking-tight">
+              Your Personal Network<br/>Intelligence
+            </h2>
+
+            {/* Groq model badge */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full mb-4"
+              style={{ background: "rgba(139,92,246,0.07)", border: "1px solid rgba(139,92,246,0.18)" }}>
+              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "linear-gradient(135deg, #60a5fa, #a78bfa)" }} />
+              <span className="text-[11px] font-semibold" style={{ color: "#7c3aed" }}>Powered by Groq · Llama 3.3 70B</span>
+            </div>
+
+            {/* Capability chips */}
+            <div className="flex flex-wrap gap-1.5 justify-center mb-6 max-w-sm">
+              {[
+                { icon: "🔍", label: "Diagnose Issues" },
+                { icon: "📊", label: "Explain Metrics" },
+                { icon: "💡", label: "Optimise Speed" },
+                { icon: "⚡", label: "Real-time Analysis" },
+              ].map(({ icon, label }) => (
+                <span key={label} className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-white border border-[var(--border)] text-[var(--text-secondary)] font-medium">
+                  {icon} {label}
+                </span>
+              ))}
+            </div>
+
+            {/* Suggestion cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-lg">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => send(s)}
-                  className="text-left px-4 py-2.5 rounded-xl border border-[var(--border)] text-[13px] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-strong)] hover:bg-white transition-all bg-white"
+                  className="text-left px-4 py-3 rounded-xl border text-[13px] font-medium text-[var(--text-secondary)] hover:text-[#7c3aed] transition-all bg-white"
+                  style={{ borderColor: "rgba(139,92,246,0.12)" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "linear-gradient(135deg, rgba(96,165,250,0.04), rgba(167,139,250,0.06))"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(139,92,246,0.28)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "white"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(139,92,246,0.12)"; }}
                 >
                   {s}
                 </button>
