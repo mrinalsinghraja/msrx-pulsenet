@@ -153,6 +153,43 @@ function ConnBar({ conn }: { conn: ConnInfo | null }) {
   );
 }
 
+// ── Reference range helper ───────────────────────────────────────────────────
+function getRef(label: string, raw: number | string): { range: string; status: string; statusColor: string; barPct: number } {
+  const v = typeof raw === "string" ? parseFloat(raw) : raw;
+  if (label === "Download") {
+    const s = v >= 100 ? "Excellent" : v >= 25 ? "Good" : v >= 10 ? "Fair" : "Poor";
+    const c = v >= 100 ? "#22c55e" : v >= 25 ? "#22d3ee" : v >= 10 ? "#f59e0b" : "#ef4444";
+    return { range: "≥25 Mbps", status: s, statusColor: c, barPct: Math.min((v / 500) * 100, 100) };
+  }
+  if (label === "Upload") {
+    const s = v >= 50 ? "Excellent" : v >= 10 ? "Good" : v >= 5 ? "Fair" : "Poor";
+    const c = v >= 50 ? "#22c55e" : v >= 10 ? "#22d3ee" : v >= 5 ? "#f59e0b" : "#ef4444";
+    return { range: "≥10 Mbps", status: s, statusColor: c, barPct: Math.min((v / 200) * 100, 100) };
+  }
+  if (label === "Latency") {
+    const s = v <= 20 ? "Excellent" : v <= 50 ? "Good" : v <= 100 ? "Fair" : "Poor";
+    const c = v <= 20 ? "#22c55e" : v <= 50 ? "#22d3ee" : v <= 100 ? "#f59e0b" : "#ef4444";
+    return { range: "≤30 ms", status: s, statusColor: c, barPct: Math.max(0, 100 - Math.min((v / 200) * 100, 100)) };
+  }
+  if (label === "Jitter") {
+    const s = v <= 5 ? "Excellent" : v <= 15 ? "Good" : v <= 30 ? "Fair" : "Poor";
+    const c = v <= 5 ? "#22c55e" : v <= 15 ? "#22d3ee" : v <= 30 ? "#f59e0b" : "#ef4444";
+    return { range: "≤10 ms", status: s, statusColor: c, barPct: Math.max(0, 100 - Math.min((v / 50) * 100, 100)) };
+  }
+  if (label === "Packet Loss") {
+    const s = v === 0 ? "Excellent" : v < 0.5 ? "Good" : v < 1 ? "Fair" : "Poor";
+    const c = v === 0 ? "#22c55e" : v < 0.5 ? "#22d3ee" : v < 1 ? "#f59e0b" : "#ef4444";
+    return { range: "0%", status: s, statusColor: c, barPct: Math.max(0, 100 - Math.min((v / 5) * 100, 100)) };
+  }
+  if (label === "Health Score") {
+    const score = typeof raw === "string" ? parseFloat(raw.split("/")[0]) : v;
+    const s = score >= 90 ? "Excellent" : score >= 75 ? "Good" : score >= 50 ? "Fair" : "Poor";
+    const c = score >= 90 ? "#22c55e" : score >= 75 ? "#22d3ee" : score >= 50 ? "#f59e0b" : "#ef4444";
+    return { range: "≥90 pts", status: s, statusColor: c, barPct: score };
+  }
+  return { range: "—", status: "—", statusColor: "#a1a1a6", barPct: 0 };
+}
+
 // ── Main ────────────────────────────────────────────────────────────────────────
 export default function SpeedTestPage() {
   const [phase, setPhase] = useState<Phase>("idle");
@@ -519,22 +556,33 @@ export default function SpeedTestPage() {
                 color: result.packetLoss > 0 ? "#ef4444" : "#22c55e",
                 metric: { name: "Packet Loss", value: result.packetLoss, unit: "%", color: result.packetLoss > 0 ? "239,68,68" : "34,197,94" } },
               { label: "Health Score", value: `${result.score}/100`, unit: "", color: scoreColor, metric: null },
-            ].map(({ label, value, unit, color, metric }) => (
-              <div key={label}
-                onClick={() => metric && setActiveMetric(metric)}
-                className={`metric-tile bg-white rounded-2xl p-3.5 border border-[var(--border)] ${metric ? "cursor-pointer" : ""}`}
-                style={{ boxShadow: "var(--shadow-card)" }}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-[10px] text-[var(--text-tertiary)] font-medium">{label}</p>
-                  {metric && <span className="text-[8px] px-1 py-0.5 rounded"
-                    style={{ background: `${color}18`, color }}>AI</span>}
+            ].map(({ label, value, unit, color, metric }) => {
+              const ref = getRef(label, value);
+              return (
+                <div key={label}
+                  onClick={() => metric && setActiveMetric(metric)}
+                  className={`metric-tile bg-white rounded-2xl p-3.5 border border-[var(--border)] ${metric ? "cursor-pointer" : ""}`}
+                  style={{ boxShadow: "var(--shadow-card)" }}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-[10px] text-[var(--text-tertiary)] font-medium">{label}</p>
+                    {metric && <span className="text-[8px] px-1 py-0.5 rounded"
+                      style={{ background: `${color}18`, color }}>AI</span>}
+                  </div>
+                  <div className="flex items-baseline gap-0.5 mb-2.5">
+                    <span className="text-[22px] font-bold leading-none" style={{ color }}>{value}</span>
+                    {unit && <span className="text-[10px] text-[var(--text-tertiary)]">{unit}</span>}
+                  </div>
+                  {/* Reference range */}
+                  <div className="w-full h-[3px] rounded-full overflow-hidden mb-1.5" style={{ background: "rgba(0,0,0,0.06)" }}>
+                    <div className="h-full rounded-full" style={{ width: `${ref.barPct}%`, background: ref.statusColor, transition: "width 0.6s ease" }} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[8px] text-[var(--text-tertiary)] font-medium">Ref {ref.range}</p>
+                    <span className="text-[8px] font-bold" style={{ color: ref.statusColor }}>{ref.status}</span>
+                  </div>
                 </div>
-                <div className="flex items-baseline gap-0.5">
-                  <span className="text-[22px] font-bold leading-none" style={{ color }}>{value}</span>
-                  {unit && <span className="text-[10px] text-[var(--text-tertiary)]">{unit}</span>}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
