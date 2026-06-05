@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, Send, Loader2, Zap, User, Bot } from "lucide-react";
+import { Send, Loader2, Zap, User, Bot } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -260,7 +260,7 @@ export default function CopilotPage() {
             )}
           </button>
         </div>
-        <p className="text-[11px] text-[var(--text-tertiary)] mt-2">Powered by Claude · Enter to send · Shift+Enter for new line</p>
+        <p className="text-[11px] text-[var(--text-tertiary)] mt-2">Powered by Groq · Enter to send · Shift+Enter for new line</p>
       </div>
     </div>
   );
