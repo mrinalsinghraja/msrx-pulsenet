@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Globe, RotateCcw, BookOpen, FileCode, ArrowRightLeft,
   Lock, MapPin, Mail, Calculator, Activity, ShieldCheck, Wifi,
   Loader2, CheckCircle, XCircle, Wrench, Fingerprint, Network,
-  ShieldAlert, Radio, Info, ChevronDown,
+  ShieldAlert, Radio, Info, ChevronDown, Sparkles,
 } from "lucide-react";
 import { DownloadButton } from "@/app/components/DownloadButton";
 
@@ -828,7 +828,25 @@ export default function ToolsPage() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [infoOpen, setInfoOpen] = useState(true); // show doc by default
+  const [infoOpen, setInfoOpen] = useState(true);
+  const [aiInterpret, setAiInterpret] = useState<{ summary: string; findings: string[]; recommendations: string[] } | null>(null);
+  const [aiInterpretLoading, setAiInterpretLoading] = useState(false);
+
+  // Fetch AI interpretation whenever result changes
+  useEffect(() => {
+    if (!result) { setAiInterpret(null); return; }
+    setAiInterpretLoading(true);
+    setAiInterpret(null);
+    const tool = TOOLS.find((t) => t.id === activeTool);
+    fetch("/api/ai/tool-interpret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ toolId: activeTool, toolName: tool?.name ?? activeTool, result }),
+    })
+      .then(r => r.json())
+      .then(data => { setAiInterpret(data); setAiInterpretLoading(false); })
+      .catch(() => setAiInterpretLoading(false));
+  }, [result]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tool = TOOLS.find((t) => t.id === activeTool)!;
   const toolInputs = inputs[activeTool] ?? {};
@@ -1007,6 +1025,85 @@ export default function ToolsPage() {
               <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-[13px] text-red-600">{error}</div>
             ) : (
               <Result toolId={activeTool} data={result} />
+            )}
+
+            {/* AI Interpretation tile */}
+            {!error && (aiInterpretLoading || aiInterpret) && (
+              <div className="mt-4 rounded-2xl overflow-hidden"
+                style={{ border: "1px solid rgba(139,92,246,0.2)" }}>
+                {/* Dark header */}
+                <div className="px-4 py-3 flex items-center gap-2.5"
+                  style={{ background: "linear-gradient(90deg, #1e1b4b 0%, #312e81 100%)" }}>
+                  <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                    <Sparkles size={11} className="text-white" />
+                  </div>
+                  <p className="text-[12px] font-bold text-white flex-1">AI Interpretation</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full animate-pulse bg-emerald-400" />
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full text-white"
+                      style={{ background: "rgba(139,92,246,0.45)", border: "1px solid rgba(139,92,246,0.5)" }}>
+                      Groq · Llama 3.3
+                    </span>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-4" style={{ background: "linear-gradient(135deg, rgba(30,27,75,0.03) 0%, rgba(139,92,246,0.04) 100%)" }}>
+                  {aiInterpretLoading ? (
+                    <div className="space-y-2.5">
+                      <div className="h-3 rounded-full animate-pulse w-full" style={{ background: "rgba(139,92,246,0.1)" }} />
+                      <div className="h-3 rounded-full animate-pulse w-5/6" style={{ background: "rgba(139,92,246,0.08)" }} />
+                      <div className="h-3 rounded-full animate-pulse w-3/4" style={{ background: "rgba(139,92,246,0.06)" }} />
+                      <div className="h-2.5 rounded-full animate-pulse w-2/5 mt-4" style={{ background: "rgba(139,92,246,0.08)" }} />
+                      <div className="h-2.5 rounded-full animate-pulse w-3/5" style={{ background: "rgba(139,92,246,0.06)" }} />
+                    </div>
+                  ) : aiInterpret && (
+                    <div className="space-y-4">
+                      {/* Summary */}
+                      <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{aiInterpret.summary}</p>
+
+                      {/* Findings */}
+                      {aiInterpret.findings?.length > 0 && (
+                        <div>
+                          <p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color: "#7c3aed" }}>Findings</p>
+                          <ul className="space-y-1.5">
+                            {aiInterpret.findings.map((f, i) => {
+                              const warn = f.startsWith("⚠");
+                              return (
+                                <li key={i} className="flex items-start gap-2 text-[12px]">
+                                  <span className={`shrink-0 text-[11px] font-bold mt-0.5 ${warn ? "text-amber-500" : "text-emerald-500"}`}>
+                                    {warn ? "⚠" : "✓"}
+                                  </span>
+                                  <span className="text-[var(--text-secondary)]">{f.replace(/^[⚠✓]\s*/, "")}</span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Recommendations */}
+                      {aiInterpret.recommendations?.length > 0 && (
+                        <div>
+                          <p className="text-[9px] font-bold uppercase tracking-wider mb-2" style={{ color: "#7c3aed" }}>Recommendations</p>
+                          <ul className="space-y-1.5">
+                            {aiInterpret.recommendations.map((r, i) => (
+                              <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-secondary)]">
+                                <span className="shrink-0 font-bold w-4 h-4 rounded-full flex items-center justify-center text-[9px] text-white mt-0.5"
+                                  style={{ background: "linear-gradient(135deg, #60a5fa, #a78bfa)", minWidth: 16 }}>
+                                  {i + 1}
+                                </span>
+                                {r}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )}
