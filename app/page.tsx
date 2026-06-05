@@ -6,7 +6,7 @@ import {
   Download, Upload, Timer, Activity, Wifi, Zap,
   RefreshCw, TrendingUp, TrendingDown, MapPin,
   CheckCircle, XCircle, Globe, Clock, Monitor,
-  Gamepad2, Video, Radio,
+  Gamepad2, Video, Radio, Sparkles,
 } from "lucide-react";
 import { scoreLabel } from "@/lib/score";
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from "recharts";
@@ -126,6 +126,8 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [pings, setPings] = useState<Ping[]>(PING_TARGETS.map((t) => ({ ...t, reachable: false, ms: null, loading: true })));
   const [explainer, setExplainer] = useState<{ name: string; value: string | number; unit: string; color: string; context?: string } | null>(null);
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [aiInsightLoading, setAiInsightLoading] = useState(false);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -169,6 +171,34 @@ export default function Dashboard() {
 
   const latest = tests[0];
   const prev = tests[1];
+
+  // Fetch AI insight for latest test (cached by test ID in sessionStorage)
+  useEffect(() => {
+    if (!latest) return;
+    const cacheKey = `pn_ai_insight_${latest.id}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) { setAiInsight(cached); return; }
+    if (!latest.download || !latest.upload || !latest.latency) return;
+    setAiInsightLoading(true);
+    setAiInsight(null);
+    fetch("/api/ai/speed-analysis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        download: latest.download, upload: latest.upload,
+        latency: latest.latency, jitter: latest.jitter ?? 0,
+        packetLoss: latest.packetLoss ?? 0, score: latest.score ?? 0,
+      }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        const txt = data.summary ?? "";
+        if (txt) sessionStorage.setItem(cacheKey, txt);
+        setAiInsight(txt);
+        setAiInsightLoading(false);
+      })
+      .catch(() => setAiInsightLoading(false));
+  }, [latest?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const chartData = [...tests].reverse().slice(-20).map((t, i) => ({ i, dl: t.download, ul: t.upload, lat: t.latency }));
   const reachable = pings.filter((p) => !p.loading && p.reachable).length;
   const allLoaded = pings.every((p) => !p.loading);
@@ -300,6 +330,27 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* AI Insight strip */}
+              {(aiInsightLoading || aiInsight) && (
+                <div className="px-5 py-3 border-t border-[var(--border)] flex items-start gap-2.5"
+                  style={{ background: "linear-gradient(90deg, rgba(139,92,246,0.03) 0%, rgba(34,211,238,0.03) 100%)" }}>
+                  <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0 mt-0.5"
+                    style={{ background: "linear-gradient(135deg, #8b5cf6 0%, #22d3ee 100%)" }}>
+                    <Sparkles size={9} className="text-white" />
+                  </div>
+                  {aiInsightLoading ? (
+                    <div className="flex-1 space-y-1.5 py-0.5">
+                      <div className="h-2.5 rounded-full bg-[var(--surface)] animate-pulse w-full" />
+                      <div className="h-2.5 rounded-full bg-[var(--surface)] animate-pulse w-4/5" />
+                    </div>
+                  ) : (
+                    <p className="text-[12px] text-[var(--text-secondary)] leading-relaxed flex-1">{aiInsight}</p>
+                  )}
+                  <span className="text-[9px] font-semibold shrink-0 mt-0.5 px-1.5 py-0.5 rounded-full"
+                    style={{ background: "rgba(139,92,246,0.08)", color: "#8b5cf6" }}>AI</span>
+                </div>
+              )}
 
               {/* Use-case ratings */}
               {useCases && (
