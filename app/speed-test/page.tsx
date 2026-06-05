@@ -153,39 +153,38 @@ function ConnBar({ conn }: { conn: ConnInfo | null }) {
   );
 }
 
-// ── Reference range helper ───────────────────────────────────────────────────
+// ── Reference range helper — RAG (Green/Amber/Red only) ─────────────────────
+const G = "#22c55e", A = "#f59e0b", R = "#ef4444"; // RAG palette
+
 function getRef(label: string, raw: number | string): { range: string; status: string; statusColor: string; barPct: number } {
   const v = typeof raw === "string" ? parseFloat(raw) : raw;
+
   if (label === "Download") {
     const s = v >= 100 ? "Excellent" : v >= 25 ? "Good" : v >= 10 ? "Fair" : "Poor";
-    const c = v >= 100 ? "#22c55e" : v >= 25 ? "#22d3ee" : v >= 10 ? "#f59e0b" : "#ef4444";
-    return { range: "≥25 Mbps", status: s, statusColor: c, barPct: Math.min((v / 500) * 100, 100) };
+    return { range: "≥25 Mbps", status: s, statusColor: v >= 25 ? G : v >= 10 ? A : R, barPct: Math.min((v / 500) * 100, 100) };
   }
   if (label === "Upload") {
     const s = v >= 50 ? "Excellent" : v >= 10 ? "Good" : v >= 5 ? "Fair" : "Poor";
-    const c = v >= 50 ? "#22c55e" : v >= 10 ? "#22d3ee" : v >= 5 ? "#f59e0b" : "#ef4444";
-    return { range: "≥10 Mbps", status: s, statusColor: c, barPct: Math.min((v / 200) * 100, 100) };
+    return { range: "≥10 Mbps", status: s, statusColor: v >= 10 ? G : v >= 5 ? A : R, barPct: Math.min((v / 200) * 100, 100) };
   }
   if (label === "Latency") {
-    const s = v <= 20 ? "Excellent" : v <= 50 ? "Good" : v <= 100 ? "Fair" : "Poor";
-    const c = v <= 20 ? "#22c55e" : v <= 50 ? "#22d3ee" : v <= 100 ? "#f59e0b" : "#ef4444";
-    return { range: "≤30 ms", status: s, statusColor: c, barPct: Math.max(0, 100 - Math.min((v / 200) * 100, 100)) };
+    // Fixed: Good = ≤30ms (aligned with ref label), Fair = ≤60ms
+    const s = v <= 20 ? "Excellent" : v <= 30 ? "Good" : v <= 60 ? "Fair" : "Poor";
+    return { range: "≤30 ms", status: s, statusColor: v <= 30 ? G : v <= 60 ? A : R, barPct: Math.max(0, 100 - Math.min((v / 200) * 100, 100)) };
   }
   if (label === "Jitter") {
-    const s = v <= 5 ? "Excellent" : v <= 15 ? "Good" : v <= 30 ? "Fair" : "Poor";
-    const c = v <= 5 ? "#22c55e" : v <= 15 ? "#22d3ee" : v <= 30 ? "#f59e0b" : "#ef4444";
-    return { range: "≤10 ms", status: s, statusColor: c, barPct: Math.max(0, 100 - Math.min((v / 50) * 100, 100)) };
+    // Fixed: Good = ≤10ms (aligned with ref label), Fair = ≤20ms
+    const s = v <= 5 ? "Excellent" : v <= 10 ? "Good" : v <= 20 ? "Fair" : "Poor";
+    return { range: "≤10 ms", status: s, statusColor: v <= 10 ? G : v <= 20 ? A : R, barPct: Math.max(0, 100 - Math.min((v / 50) * 100, 100)) };
   }
   if (label === "Packet Loss") {
     const s = v === 0 ? "Excellent" : v < 0.5 ? "Good" : v < 1 ? "Fair" : "Poor";
-    const c = v === 0 ? "#22c55e" : v < 0.5 ? "#22d3ee" : v < 1 ? "#f59e0b" : "#ef4444";
-    return { range: "0%", status: s, statusColor: c, barPct: Math.max(0, 100 - Math.min((v / 5) * 100, 100)) };
+    return { range: "0%", status: s, statusColor: v < 0.5 ? G : v < 1 ? A : R, barPct: Math.max(0, 100 - Math.min((v / 5) * 100, 100)) };
   }
   if (label === "Health Score") {
     const score = typeof raw === "string" ? parseFloat(raw.split("/")[0]) : v;
     const s = score >= 90 ? "Excellent" : score >= 75 ? "Good" : score >= 50 ? "Fair" : "Poor";
-    const c = score >= 90 ? "#22c55e" : score >= 75 ? "#22d3ee" : score >= 50 ? "#f59e0b" : "#ef4444";
-    return { range: "≥90 pts", status: s, statusColor: c, barPct: score };
+    return { range: "≥90 pts", status: s, statusColor: score >= 75 ? G : score >= 50 ? A : R, barPct: score };
   }
   return { range: "—", status: "—", statusColor: "#a1a1a6", barPct: 0 };
 }

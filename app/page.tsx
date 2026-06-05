@@ -47,10 +47,11 @@ function fmt(v: number | null, d = 1) {
   return v >= 100 ? Math.round(v).toString() : v.toFixed(d);
 }
 
-function latCls(ms: number | null) {
-  if (!ms) return "text-[var(--text-tertiary)]";
-  return ms <= 30 ? "text-emerald-600" : ms <= 80 ? "text-amber-600" : "text-red-500";
-}
+// RAG helpers for dashboard metric tiles
+function ragDl(v: number | null) { return !v ? "text-[var(--text-tertiary)]" : v >= 25 ? "text-emerald-600" : v >= 10 ? "text-amber-500" : "text-red-500"; }
+function ragUl(v: number | null) { return !v ? "text-[var(--text-tertiary)]" : v >= 10 ? "text-emerald-600" : v >= 5 ? "text-amber-500" : "text-red-500"; }
+function latCls(ms: number | null) { return !ms ? "text-[var(--text-tertiary)]" : ms <= 30 ? "text-emerald-600" : ms <= 60 ? "text-amber-500" : "text-red-500"; }
+function ragJitter(v: number | null) { return !v ? "text-[var(--text-tertiary)]" : v <= 10 ? "text-emerald-600" : v <= 20 ? "text-amber-500" : "text-red-500"; }
 
 // ── Use-case rating ───────────────────────────────────────────────────────────
 type UseCase = { label: string; sublabel: string; icon: React.ElementType; ok: boolean; reason: string };
@@ -299,11 +300,11 @@ export default function Dashboard() {
                   <div className="overflow-x-auto -mx-1 px-1">
                   <div className="grid grid-cols-5 gap-2" style={{ minWidth: 300 }}>
                     {[
-                      { label: "Download Speed", val: latest.download, unit: "Mbps", icon: Download, cls: "text-cyan-600", bg: "bg-cyan-50", prev: prev?.download, higher: true, rgb: "34,211,238", ctx: "Higher is better. Measured using 25MB Cloudflare CDN blob." },
-                      { label: "Upload Speed", val: latest.upload, unit: "Mbps", icon: Upload, cls: "text-violet-600", bg: "bg-violet-50", prev: prev?.upload, higher: true, rgb: "168,85,247", ctx: "Higher is better. Measured via 4 concurrent XHR uploads to Cloudflare." },
+                      { label: "Download Speed", val: latest.download, unit: "Mbps", icon: Download, cls: ragDl(latest.download), bg: "bg-emerald-50", prev: prev?.download, higher: true, rgb: "34,211,238", ctx: "Higher is better. Measured using 25MB Cloudflare CDN blob." },
+                      { label: "Upload Speed", val: latest.upload, unit: "Mbps", icon: Upload, cls: ragUl(latest.upload), bg: "bg-emerald-50", prev: prev?.upload, higher: true, rgb: "168,85,247", ctx: "Higher is better. Measured via 4 concurrent XHR uploads to Cloudflare." },
                       { label: "Latency", val: latest.latency, unit: "ms", icon: Timer, cls: latCls(latest.latency), bg: "bg-emerald-50", prev: prev?.latency, higher: false, rgb: "16,185,129", ctx: "Round-trip time to Cloudflare. Lower is better. Under 30ms is excellent." },
-                      { label: "Jitter", val: latest.jitter, unit: "ms", icon: Activity, cls: "text-amber-600", bg: "bg-amber-50", prev: prev?.jitter, higher: false, rgb: "245,158,11", ctx: "Variance in latency between packets. Under 5ms is excellent for gaming and calls." },
-                      { label: "Packet Loss", val: latest.packetLoss, unit: "%", icon: Wifi, cls: (latest.packetLoss ?? 0) === 0 ? "text-green-600" : "text-red-500", bg: "bg-indigo-50", prev: prev?.packetLoss, higher: false, rgb: "99,102,241", ctx: "Percentage of packets lost in transit. 0% is ideal. Above 1% causes noticeable issues." },
+                      { label: "Jitter", val: latest.jitter, unit: "ms", icon: Activity, cls: ragJitter(latest.jitter), bg: "bg-amber-50", prev: prev?.jitter, higher: false, rgb: "245,158,11", ctx: "Variance in latency between packets. Under 5ms is excellent for gaming and calls." },
+                      { label: "Packet Loss", val: latest.packetLoss, unit: "%", icon: Wifi, cls: (latest.packetLoss ?? 0) === 0 ? "text-emerald-600" : (latest.packetLoss ?? 0) < 1 ? "text-amber-500" : "text-red-500", bg: "bg-indigo-50", prev: prev?.packetLoss, higher: false, rgb: "99,102,241", ctx: "Percentage of packets lost in transit. 0% is ideal. Above 1% causes noticeable issues." },
                     ].map(({ label, val, unit, icon: Icon, cls, bg, prev: p, higher, rgb, ctx }) => {
                       const diff = val != null && p != null ? val - p : null;
                       const good = diff != null ? (higher ? diff > 0 : diff < 0) : null;
