@@ -907,6 +907,35 @@ export default function ToolsPage() {
         <p className="text-[13px] text-[var(--text-secondary)]">Professional diagnostics — DNS, WHOIS, SSL, headers, routing, and more</p>
       </div>
 
+      {/* AI capability banner */}
+      <div className="mb-5 rounded-2xl overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4c1d95 100%)", boxShadow: "0 4px 24px rgba(139,92,246,0.25)" }}>
+        <div className="px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="w-10 h-10 rounded-2xl shrink-0 flex items-center justify-center"
+              style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)" }}>
+              <Sparkles size={18} className="text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <p className="text-[13px] font-bold text-white">AI-Powered Tool Interpretation</p>
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full text-white"
+                  style={{ background: "rgba(139,92,246,0.5)", border: "1px solid rgba(167,139,250,0.4)" }}>
+                  Groq · Llama 3.3 70B
+                </span>
+              </div>
+              <p className="text-[11px]" style={{ color: "rgba(200,210,255,0.75)" }}>
+                Every result is automatically analysed — plain-English insights, findings flagged ⚠ or ✓, and actionable recommendations.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse bg-emerald-400" />
+            <span className="text-[10px] font-semibold" style={{ color: "rgba(167,239,200,0.9)" }}>AI Active</span>
+          </div>
+        </div>
+      </div>
+
       {/* Tool grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 mb-5">
         {TOOLS.map((t) => {
