@@ -544,16 +544,16 @@ export default function SpeedTestPage() {
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: "Download", value: result.download, unit: "Mbps", color: "#22d3ee",
-                metric: { name: "Download Speed", value: result.download, unit: "Mbps", color: "34,211,238", context: `Upload: ${result.upload}Mbps` } },
+                metric: { name: "Download Speed", value: result.download, unit: "Mbps", color: "34,211,238", context: `Download ${result.download}Mbps, Upload ${result.upload}Mbps, Latency ${result.latency}ms, Jitter ${result.jitter}ms, Packet Loss ${result.packetLoss}%, Score ${result.score}/100` } },
               { label: "Upload", value: result.upload, unit: "Mbps", color: "#a855f7",
-                metric: { name: "Upload Speed", value: result.upload, unit: "Mbps", color: "168,85,247", context: `Download: ${result.download}Mbps` } },
+                metric: { name: "Upload Speed", value: result.upload, unit: "Mbps", color: "168,85,247", context: `Download ${result.download}Mbps, Upload ${result.upload}Mbps, Latency ${result.latency}ms, Jitter ${result.jitter}ms, Packet Loss ${result.packetLoss}%, Score ${result.score}/100` } },
               { label: "Latency", value: result.latency, unit: "ms", color: "#22c55e",
-                metric: { name: "Latency", value: result.latency, unit: "ms", color: "34,197,94", context: `Jitter: ${result.jitter}ms` } },
+                metric: { name: "Latency", value: result.latency, unit: "ms", color: "34,197,94", context: `Download ${result.download}Mbps, Upload ${result.upload}Mbps, Latency ${result.latency}ms, Jitter ${result.jitter}ms, Packet Loss ${result.packetLoss}%, Score ${result.score}/100` } },
               { label: "Jitter", value: result.jitter, unit: "ms", color: "#f59e0b",
-                metric: { name: "Jitter", value: result.jitter, unit: "ms", color: "245,158,11" } },
+                metric: { name: "Jitter", value: result.jitter, unit: "ms", color: "245,158,11", context: `Download ${result.download}Mbps, Upload ${result.upload}Mbps, Latency ${result.latency}ms, Jitter ${result.jitter}ms, Packet Loss ${result.packetLoss}%, Score ${result.score}/100` } },
               { label: "Packet Loss", value: result.packetLoss, unit: "%",
                 color: result.packetLoss > 0 ? "#ef4444" : "#22c55e",
-                metric: { name: "Packet Loss", value: result.packetLoss, unit: "%", color: result.packetLoss > 0 ? "239,68,68" : "34,197,94" } },
+                metric: { name: "Packet Loss", value: result.packetLoss, unit: "%", color: result.packetLoss > 0 ? "239,68,68" : "34,197,94", context: `Download ${result.download}Mbps, Upload ${result.upload}Mbps, Latency ${result.latency}ms, Jitter ${result.jitter}ms, Packet Loss ${result.packetLoss}%, Score ${result.score}/100` } },
               { label: "Health Score", value: `${result.score}/100`, unit: "", color: scoreColor, metric: null },
             ].map(({ label, value, unit, color, metric }) => {
               const ref = getRef(label, value);

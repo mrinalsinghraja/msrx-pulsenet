@@ -18,10 +18,10 @@ type Explanation = {
 };
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string }> = {
-  Excellent:   { color: "#16a34a", bg: "rgba(22,163,74,0.15)" },
+  Excellent:   { color: "#22c55e", bg: "rgba(34,197,94,0.15)" },
   Good:        { color: "#22c55e", bg: "rgba(34,197,94,0.12)" },
-  Acceptable:  { color: "#60a5fa", bg: "rgba(96,165,250,0.15)" },
-  Concerning:  { color: "#f97316", bg: "rgba(249,115,22,0.15)" },
+  Acceptable:  { color: "#f59e0b", bg: "rgba(245,158,11,0.15)" },
+  Concerning:  { color: "#f59e0b", bg: "rgba(245,158,11,0.15)" },
   Critical:    { color: "#ef4444", bg: "rgba(239,68,68,0.15)" },
   Unknown:     { color: "#a1a1a6", bg: "rgba(161,161,166,0.12)" },
 };
