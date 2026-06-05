@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Zap, MapPin, Globe, Wifi, Server, RefreshCw, Monitor, Gamepad2, Video } from "lucide-react";
+import { Zap, MapPin, Globe, Wifi, Server, RefreshCw, Monitor, Gamepad2, Video, Sparkles } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
 import { calculateScore, scoreLabel } from "@/lib/score";
 import { MetricExplainer } from "@/app/components/MetricExplainer";
@@ -11,6 +11,7 @@ type Phase = "idle" | "latency" | "download" | "upload" | "done";
 type MetricInfo = { name: string; value: string | number; unit: string; color: string; context?: string };
 type ConnInfo = { ip: string; isp: string; city: string; country: string };
 type Result = { download: number; upload: number; latency: number; jitter: number; packetLoss: number; score: number };
+type AIAnalysis = { summary: string; impacts: string[]; recommendations: string[] };
 
 // ── Log-scale helpers ────────────────────────────────────────────────────────
 const MAX_MBPS = 1000;
@@ -163,10 +164,27 @@ export default function SpeedTestPage() {
   const [activeMetric, setActiveMetric] = useState<MetricInfo | null>(null);
   const [dlPoints, setDlPoints] = useState<{ t: number; mbps: number }[]>([]);
   const [upPoints, setUpPoints] = useState<{ t: number; mbps: number }[]>([]);
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     fetch("/api/ip-info").then(r => r.json()).then(setConn).catch(() => {});
   }, []);
+
+  // Auto-fetch AI analysis when test completes
+  useEffect(() => {
+    if (!result) return;
+    setAiAnalysis(null);
+    setAiLoading(true);
+    fetch("/api/ai/speed-analysis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(result),
+    })
+      .then(r => r.json())
+      .then(data => { setAiAnalysis(data); setAiLoading(false); })
+      .catch(() => setAiLoading(false));
+  }, [result]);
 
   const runTest = useCallback(async () => {
     setPhase("latency");
@@ -518,6 +536,74 @@ export default function SpeedTestPage() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* AI Analysis */}
+      {(aiLoading || aiAnalysis) && (
+        <div className="mt-3 bg-white rounded-2xl border border-[var(--border)] overflow-hidden" style={{ boxShadow: "var(--shadow-card)" }}>
+          <div className="px-4 py-3 border-b border-[var(--border)] flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, #8b5cf6 0%, #22d3ee 100%)" }}>
+              <Sparkles size={11} className="text-white" />
+            </div>
+            <p className="text-[12px] font-bold text-[var(--text-primary)] tracking-wide">AI Analysis</p>
+            <span className="ml-auto text-[9px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ background: "rgba(139,92,246,0.08)", color: "#8b5cf6" }}>
+              Groq · Llama 3.3
+            </span>
+          </div>
+
+          {aiLoading ? (
+            <div className="p-4 space-y-2.5">
+              <div className="h-3 rounded-full bg-[var(--surface)] animate-pulse w-full" />
+              <div className="h-3 rounded-full bg-[var(--surface)] animate-pulse w-[85%]" />
+              <div className="h-3 rounded-full bg-[var(--surface)] animate-pulse w-[65%]" />
+              <div className="h-2.5 rounded-full bg-[var(--surface)] animate-pulse w-[40%] mt-4" />
+              <div className="flex gap-2 mt-1">
+                <div className="h-6 w-28 rounded-full bg-[var(--surface)] animate-pulse" />
+                <div className="h-6 w-24 rounded-full bg-[var(--surface)] animate-pulse" />
+              </div>
+            </div>
+          ) : aiAnalysis && (
+            <div className="p-4 space-y-4">
+              {/* Summary */}
+              <p className="text-[13px] text-[var(--text-primary)] leading-relaxed">{aiAnalysis.summary}</p>
+
+              {/* Impacts */}
+              {aiAnalysis.impacts?.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">Potential Impacts</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {aiAnalysis.impacts.map((impact, i) => (
+                      <span key={i} className="text-[11px] px-2.5 py-1 rounded-full border"
+                        style={{ background: "rgba(245,158,11,0.06)", color: "#b45309", borderColor: "rgba(245,158,11,0.18)" }}>
+                        ⚡ {impact}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recommendations */}
+              {aiAnalysis.recommendations?.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-wider mb-2">Recommendations</p>
+                  <ul className="space-y-2">
+                    {aiAnalysis.recommendations.map((rec, i) => (
+                      <li key={i} className="flex items-start gap-2 text-[12px] text-[var(--text-secondary)]">
+                        <span className="shrink-0 mt-0.5 text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center text-white"
+                          style={{ background: "linear-gradient(135deg, #22d3ee, #8b5cf6)", minWidth: 16 }}>
+                          {i + 1}
+                        </span>
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
