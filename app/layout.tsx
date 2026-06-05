@@ -5,11 +5,11 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "PulseNet — Network Monitor by MSRX",
-  description: "Elegant network monitoring. Track uptime, latency, and health at a glance.",
+  title: "PulseNet — AI Network Intelligence",
+  description: "AI-powered network intelligence. Real-time speed analysis, diagnostics, and personalised recommendations — powered by Groq AI.",
   openGraph: {
-    title: "PulseNet — Network Monitor by MSRX",
-    description: "Elegant network monitoring. Track uptime, latency, and health at a glance.",
+    title: "PulseNet — AI Network Intelligence",
+    description: "AI-powered network intelligence. Real-time speed analysis, diagnostics, and personalised recommendations — powered by Groq AI.",
     url: "https://pulsenet.msrx.co.in",
     siteName: "PulseNet by MSRX",
   },

@@ -538,9 +538,16 @@ export default function SpeedTestPage() {
       {/* Metric cards */}
       {result && phase === "done" && (
         <div className="mt-3">
-          <p className="text-[11px] text-[var(--text-tertiary)] mb-3">
-            💡 Tap a card for AI explanation
-          </p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] text-[var(--text-tertiary)]">
+              Tap any metric for real-time AI diagnosis
+            </p>
+            <span className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full text-white"
+              style={{ background: "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)" }}>
+              <span className="w-1 h-1 rounded-full bg-white animate-pulse" />
+              AI Ready
+            </span>
+          </div>
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: "Download", value: result.download, unit: "Mbps", color: "#22d3ee",

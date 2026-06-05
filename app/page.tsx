@@ -280,6 +280,10 @@ export default function Dashboard() {
                 <div className="flex flex-col items-center gap-2">
                   <ScoreRing score={latest.score ?? 0} />
                   <p className="text-[11px] text-[var(--text-tertiary)] text-center">Network Score</p>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full text-white"
+                    style={{ background: "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)" }}>
+                    ✦ AI Scored
+                  </span>
                 </div>
 
                 {/* Metrics 5-column */}

@@ -12,10 +12,10 @@ import {
 } from "lucide-react";
 
 const NAV = [
-  { href: "/", icon: LayoutDashboard, label: "Dashboard" },
-  { href: "/speed-test", icon: Zap, label: "Speed Test" },
-  { href: "/tools", icon: Wrench, label: "Tools" },
-  { href: "/copilot", icon: MessageSquare, label: "AI Copilot" },
+  { href: "/", icon: LayoutDashboard, label: "Dashboard", ai: true },
+  { href: "/speed-test", icon: Zap, label: "Speed Test", ai: true },
+  { href: "/tools", icon: Wrench, label: "Tools", ai: false },
+  { href: "/copilot", icon: MessageSquare, label: "AI Copilot", ai: true },
 ];
 
 function PulseNetLogo({ size = 36 }: { size?: number }) {
@@ -37,15 +37,18 @@ export function Sidebar() {
           <p className="font-semibold text-[15px] tracking-tight text-[var(--text-primary)] leading-tight">
             PulseNet
           </p>
-          <p className="text-[10px] text-[var(--text-tertiary)] tracking-wide leading-tight">
-            AI Network Intelligence
-          </p>
+          <div className="flex items-center gap-1">
+            <p className="text-[10px] text-[var(--text-tertiary)] tracking-wide leading-tight">
+              AI Network Intelligence
+            </p>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+          </div>
         </div>
       </div>
 
       {/* Nav */}
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
-        {NAV.map(({ href, icon: Icon, label }) => {
+        {NAV.map(({ href, icon: Icon, label, ai }) => {
           const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
             <Link
@@ -62,8 +65,8 @@ export function Sidebar() {
                 className={active ? "text-[#7C3AED]" : "text-[var(--text-tertiary)]"}
               />
               {label}
-              {href === "/copilot" && (
-                <span className="ml-auto text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-gradient-to-r from-blue-400 to-violet-500 text-white">
+              {ai && (
+                <span className="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-gradient-to-r from-blue-400 to-violet-500 text-white">
                   AI
                 </span>
               )}
@@ -77,6 +80,12 @@ export function Sidebar() {
         <div className="flex items-center gap-2">
           <Activity size={12} className="text-green-500" />
           <span className="text-[11px] text-[var(--text-tertiary)]">System Active</span>
+        </div>
+        <div className="flex items-center gap-2 px-1">
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "linear-gradient(135deg, #60a5fa, #a78bfa)" }} />
+            <span className="text-[10px] font-medium" style={{ color: "#8b5cf6" }}>Groq AI · Connected</span>
+          </div>
         </div>
         <a
           href="https://msrx.co.in"
