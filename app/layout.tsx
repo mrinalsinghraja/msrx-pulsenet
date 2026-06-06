@@ -7,11 +7,24 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 export const metadata: Metadata = {
   title: "PulseNet — AI Network Intelligence",
   description: "AI-powered network intelligence. Real-time speed analysis, diagnostics, and personalised recommendations — powered by Groq AI.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
   openGraph: {
     title: "PulseNet — AI Network Intelligence",
     description: "AI-powered network intelligence. Real-time speed analysis, diagnostics, and personalised recommendations — powered by Groq AI.",
     url: "https://pulsenet.msrx.co.in",
     siteName: "PulseNet by MSRX",
+    type: "website",
+    images: [{ url: "https://pulsenet.msrx.co.in/opengraph-image", width: 1200, height: 630, alt: "PulseNet — AI Network Intelligence" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PulseNet — AI Network Intelligence",
+    description: "AI-powered network intelligence. Real-time speed analysis, diagnostics, and personalised recommendations — powered by Groq AI.",
+    images: ["https://pulsenet.msrx.co.in/opengraph-image"],
   },
 };
 
