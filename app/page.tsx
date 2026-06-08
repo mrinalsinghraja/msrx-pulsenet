@@ -277,14 +277,24 @@ export default function Dashboard() {
               {/* Top: score + metrics */}
               <div className="p-5 flex flex-col sm:flex-row gap-5">
                 {/* Score ring */}
-                <div className="flex flex-col items-center gap-2">
+                <button
+                  onClick={() => setExplainer({
+                    name: "Network Score",
+                    value: latest.score ?? 0,
+                    unit: "/100",
+                    color: (latest.score ?? 0) >= 75 ? "34,197,94" : (latest.score ?? 0) >= 50 ? "245,158,11" : "239,68,68",
+                    context: `Download ${fmt(latest.download)}Mbps, Upload ${fmt(latest.upload)}Mbps, Latency ${fmt(latest.latency)}ms, Jitter ${fmt(latest.jitter)}ms, Packet Loss ${fmt(latest.packetLoss)}%, Score ${latest.score}/100`,
+                  })}
+                  className="flex flex-col items-center gap-2 cursor-pointer hover:brightness-95 transition-all active:scale-95 rounded-2xl p-1.5 -m-1.5 text-left"
+                  title="Click for AI analysis"
+                >
                   <ScoreRing score={latest.score ?? 0} />
                   <p className="text-[11px] text-[var(--text-tertiary)] text-center">Network Score</p>
                   <span className="text-[9px] font-bold px-2 py-0.5 rounded-full text-white"
                     style={{ background: "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)" }}>
                     ✦ AI Scored
                   </span>
-                </div>
+                </button>
 
                 {/* Metrics 5-column */}
                 <div className="flex-1">

@@ -561,7 +561,8 @@ export default function SpeedTestPage() {
               { label: "Packet Loss", value: result.packetLoss, unit: "%",
                 color: result.packetLoss > 0 ? "#ef4444" : "#22c55e",
                 metric: { name: "Packet Loss", value: result.packetLoss, unit: "%", color: result.packetLoss > 0 ? "239,68,68" : "34,197,94", context: `Download ${result.download}Mbps, Upload ${result.upload}Mbps, Latency ${result.latency}ms, Jitter ${result.jitter}ms, Packet Loss ${result.packetLoss}%, Score ${result.score}/100` } },
-              { label: "Health Score", value: `${result.score}/100`, unit: "", color: scoreColor, metric: null },
+              { label: "Health Score", value: `${result.score}/100`, unit: "", color: scoreColor,
+                metric: { name: "Health Score", value: result.score, unit: "/100", color: result.score >= 75 ? "34,197,94" : result.score >= 50 ? "245,158,11" : "239,68,68", context: `Download ${result.download}Mbps, Upload ${result.upload}Mbps, Latency ${result.latency}ms, Jitter ${result.jitter}ms, Packet Loss ${result.packetLoss}%, Score ${result.score}/100` } },
             ].map(({ label, value, unit, color, metric }) => {
               const ref = getRef(label, value);
               return (
